@@ -2,14 +2,14 @@
 // firebase-config.js - BIRKENSTOCK FORMAÇÃO
 // ============================================
 
-// Configuração do Firebase (ATUALIZADA)
+// Configuração do Firebase (CORRIGIDA - projeto plataforma-ssa-3130e)
 const firebaseConfig = {
-  apiKey: "AIzaSyBY_Npu9n8VEh6bykipH3HCt1aeTU5B0n4",
-  authDomain: "birk-formacao.firebaseapp.com",
-  projectId: "birk-formacao",
-  storageBucket: "birk-formacao.firebasestorage.app",
-  messagingSenderId: "314572551710",
-  appId: "1:314572551710:web:fddb38b6a1517fead2a00f"
+  apiKey: "AIzaSyAwywvboQgWqrkZlbwrUPdaUq-glnWM64E",
+  authDomain: "plataforma-ssa-3130e.firebaseapp.com",
+  projectId: "plataforma-ssa-3130e",
+  storageBucket: "plataforma-ssa-3130e.firebasestorage.app",
+  messagingSenderId: "850671249674",
+  appId: "1:850671249674:web:53a115408f8006745c32f3"
 };
 
 // Emails que podem ser administradores - ADICIONA AQUI O TEU EMAIL
@@ -38,6 +38,14 @@ function initFirebase() {
       firebase.initializeApp(firebaseConfig);
       window.auth = firebase.auth();
       window.db = firebase.firestore();
+      
+      // Configurar Firestore para usar cache offline
+      if (window.db) {
+        window.db.enablePersistence()
+          .then(() => console.log('🔥 Firestore offline persistence ativado'))
+          .catch(err => console.warn('Offline persistence error:', err));
+      }
+      
       window.firebaseReady = true;
       console.log('🔥 Firebase inicializado com sucesso');
       
@@ -79,4 +87,4 @@ window.getFirebaseStatus = function () {
   };
 };
 
-console.log('✅ firebase-config.js carregado');
+console.log('✅ firebase-config.js carregado - projeto plataforma-ssa-3130e');
