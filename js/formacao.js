@@ -85,7 +85,7 @@ async function initFormacao() {
 }
 
 // ==================== LEITURA DE TOKEN ====================
-ffunction lerTokenUrl() {
+function lerTokenUrl() {
     const urlParams = new URLSearchParams(window.location.search);
     let token = urlParams.get('token') || urlParams.get('t');
     
