@@ -23,6 +23,31 @@ const defaultCert = {
 
 let certTemplate = JSON.parse(localStorage.getItem('cert_template') || JSON.stringify(defaultCert));
 
+// ==================== FUNÇÃO CORRIGIDA - TOKEN SEGURO ====================
+function gerarTokenSeguro(dados) {
+    try {
+        // 1. Converter para JSON
+        const jsonStr = JSON.stringify(dados);
+        
+        // 2. Codificar para UTF-8 corretamente (suporta ç, ã, õ, etc)
+        const utf8Str = unescape(encodeURIComponent(jsonStr));
+        
+        // 3. Converter para base64
+        let base64 = btoa(utf8Str);
+        
+        // 4. Substituir caracteres problemáticos para URL
+        base64 = base64
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
+        
+        return base64;
+    } catch(e) {
+        console.error('Erro ao gerar token:', e);
+        return Date.now() + '_' + dados.user.replace(/[^a-z0-9]/gi, '_');
+    }
+}
+
 // ==================== DADOS ====================
 function carregarDadosExemplo() {
   if (localStorage.getItem('formacoes')) {
@@ -183,32 +208,6 @@ function prepararAtribuicao() {
     }
 }
 
-// Função para gerar token sem problemas de codificação
-function gerarTokenSeguro(dados) {
-    try {
-        // 1. Converter para JSON
-        const jsonStr = JSON.stringify(dados);
-        
-        // 2. Codificar caracteres especiais (acentos, cedilha, etc)
-        const utf8Str = encodeURIComponent(jsonStr);
-        
-        // 3. Converter para base64
-        let base64 = btoa(utf8Str);
-        
-        // 4. Substituir caracteres problemáticos para URL
-        base64 = base64
-            .replace(/\+/g, '-')  // + -> -
-            .replace(/\//g, '_')  // / -> _
-            .replace(/=+$/, '');   // remover padding = no final
-        
-        return base64;
-    } catch(e) {
-        console.error('Erro ao gerar token:', e);
-        return Date.now() + '_' + dados.user.replace(/[^a-z0-9]/gi, '_');
-    }
-}
-
-// Função CORRIGIDA para gerar link individual
 function gerarCodigoAtribuicao() {
     const colabSelect = document.getElementById('select-colaborador');
     const cursoSelect = document.getElementById('select-formacao');
@@ -229,7 +228,6 @@ function gerarCodigoAtribuicao() {
         return;
     }
 
-    // Dados limpos
     const tokenData = { 
         user: colaborador.user || colaborador.email,
         nome: colaborador.nome,
@@ -241,13 +239,11 @@ function gerarCodigoAtribuicao() {
         ts: Date.now() 
     };
     
-    // Usar função segura para gerar token
     const token = gerarTokenSeguro(tokenData);
     
     const urlBase = window.location.origin + window.location.pathname.replace('admin.html', '') + 'formacao.html';
     const linkFinal = `${urlBase}?token=${token}`;
 
-    // Guardar token no localStorage
     localStorage.setItem(`token_${token}`, JSON.stringify(tokenData));
 
     const novaAtribuicao = {
@@ -278,6 +274,8 @@ function gerarCodigoAtribuicao() {
     
     showToast("✅ Atribuição registada com sucesso!");
 }
+
+// ==================== FUNÇÃO CORRIGIDA - ENVIO DE EMAIL ====================
 function EnvioEmail() {
     const colabSelect = document.getElementById('select-colaborador');
     const colabId = colabSelect?.value;
@@ -300,6 +298,7 @@ function EnvioEmail() {
         return;
     }
 
+    // CORRIGIDO: Acentuação correta em "Formação"
     const assunto = encodeURIComponent('[Birkenstock] Nova Formação Atribuída');
     const corpo = encodeURIComponent(
         `Olá ${colaborador.nome},\n\n` +
@@ -353,7 +352,6 @@ function renderFormacoesLista() {
     </div>
   `).join('');
   
-  // Adicionar event listeners aos botões
   document.querySelectorAll('.btn-editar-formacao').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -495,7 +493,6 @@ function renderModulos() {
     </div>
   `).join('');
   
-  // Adicionar event listeners
   document.querySelectorAll('.btn-editar-modulo').forEach(btn => {
     btn.addEventListener('click', () => editarModulo(btn.dataset.id));
   });
@@ -585,7 +582,6 @@ function renderPerguntas() {
     </div>
   `).join('');
   
-  // Adicionar event listeners
   document.querySelectorAll('.btn-editar-pergunta').forEach(btn => {
     btn.addEventListener('click', () => editarPergunta(btn.dataset.id));
   });
@@ -615,7 +611,6 @@ function renderColabs() {
     </tr>
   `).join('');
   
-  // Adicionar event listeners
   document.querySelectorAll('.btn-remover-colab').forEach(btn => {
     btn.addEventListener('click', () => removerColab(btn.dataset.id));
   });
@@ -721,12 +716,7 @@ function exportarColaboradoresExcel() {
 }
 
 // ==================== ATRIBUIÇÃO EM MASSA ====================
-
 function atualizarSelectores() {
-  console.log("🔄 Atualizando selectores...");
-  console.log("Formações disponíveis:", formacoes.length);
-  console.log("Colaboradores disponíveis:", colaboradores.length);
-  
   const atribuirCurso = document.getElementById('atribuir-curso');
   const colabGrid = document.getElementById('colab-selector-grid');
   
@@ -735,13 +725,6 @@ function atualizarSelectores() {
   if (atribuirCurso) {
     atribuirCurso.innerHTML = '<option value="">Selecione uma formação</option>' +
       formacoes.map(c => `<option value="${c.id}" ${valorSelecionado === c.id ? 'selected' : ''}>${escapeHtml(c.nome)}</option>`).join('');
-    console.log("✅ Selector de formação atualizado com", formacoes.length, "formações");
-    
-    if (valorSelecionado) {
-      atribuirCurso.value = valorSelecionado;
-    }
-  } else {
-    console.warn("❌ Elemento 'atribuir-curso' não encontrado");
   }
   
   if (colabGrid) {
@@ -765,9 +748,6 @@ function atualizarSelectores() {
         </label>
       `;
     }).join('');
-    console.log("✅ Grid de colaboradores atualizado com", colaboradores.length, "colaboradores");
-  } else {
-    console.warn("❌ Elemento 'colab-selector-grid' não encontrado");
   }
   
   const filtroFormacao = document.getElementById('filtro-formacao-acompanhar');
@@ -785,7 +765,6 @@ function deselecionarTodos() {
   document.querySelectorAll('#colab-selector-grid input').forEach(cb => cb.checked = false);
 }
 
-// Função CORRIGIDA para gerar links em massa
 function gerarLinksMassa() {
     const cursoId = document.getElementById('atribuir-curso')?.value;
     if (!cursoId) { showToast('❌ Selecione uma formação'); return; }
@@ -806,17 +785,13 @@ function gerarLinksMassa() {
         const colaboradorId = cb.value;
         const colaborador = colaboradores.find(c => c.id === colaboradorId);
         
-        if (!colaborador) {
-            console.warn('Colaborador não encontrado:', colaboradorId);
-            continue;
-        }
+        if (!colaborador) continue;
         
         const user = colaborador.user || colaborador.email;
         const nome = colaborador.nome;
         const email = colaborador.email || '';
         const matricula = colaborador.matricula || '';
         
-        // Verificar se já existe atribuição pendente
         const atribuicaoExistente = atribuicoes.find(a =>
             a.colaboradorUser === user && 
             a.cursoId === cursoId && 
@@ -824,37 +799,15 @@ function gerarLinksMassa() {
         );
         
         if (atribuicaoExistente) {
-            const link = atribuicaoExistente.link;
-            linksGerados.push({ 
-                nome, 
-                email, 
-                matricula, 
-                link, 
-                prazo, 
-                cursoNome, 
-                status: 'reutilizado' 
-            });
+            linksGerados.push({ nome, email, matricula, link: atribuicaoExistente.link, prazo, cursoNome, status: 'reutilizado' });
             contadorReutilizados++;
             continue;
         }
         
-        // Dados do token
-        const tokenData = {
-            user: user,
-            nome: nome,
-            email: email,
-            matricula: matricula,
-            cursoId: cursoId,
-            cursoNome: cursoNome,
-            prazo: prazo,
-            timestamp: Date.now()
-        };
-        
-        // Usar a mesma função segura de token
+        const tokenData = { user, nome, email, matricula, cursoId, cursoNome, prazo, timestamp: Date.now() };
         const token = gerarTokenSeguro(tokenData);
         const link = `${baseUrl}?token=${token}`;
         
-        // Guardar token no localStorage
         localStorage.setItem(`token_${token}`, JSON.stringify(tokenData));
         
         const novaAtribuicao = {
@@ -874,15 +827,7 @@ function gerarLinksMassa() {
         };
         
         atribuicoes.push(novaAtribuicao);
-        linksGerados.push({ 
-            nome, 
-            email, 
-            matricula, 
-            link, 
-            prazo, 
-            cursoNome, 
-            status: 'novo' 
-        });
+        linksGerados.push({ nome, email, matricula, link, prazo, cursoNome, status: 'novo' });
         contadorSucesso++;
     }
     
@@ -914,7 +859,6 @@ function gerarLinksMassa() {
             </div>
         `).join('');
         
-        // Adicionar event listeners aos botões
         document.querySelectorAll('.btn-copiar-link-individual').forEach(btn => {
             btn.addEventListener('click', () => copiarLinkIndividual(btn.dataset.link));
         });
@@ -925,15 +869,12 @@ function gerarLinksMassa() {
         linksGeradosDiv.style.display = 'block';
         
         let msg = `✅ ${contadorSucesso} link(s) novo(s) gerado(s)!`;
-        if (contadorReutilizados > 0) {
-            msg += ` ${contadorReutilizados} já existente(s).`;
-        }
+        if (contadorReutilizados > 0) msg += ` ${contadorReutilizados} já existente(s).`;
         showToast(msg);
         renderAcompanhamento();
-    } else {
-        showToast('❌ Nenhum link foi gerado');
     }
 }
+
 function copiarLinkIndividual(link) {
   navigator.clipboard?.writeText(link).then(() => {
     showToast('🔗 Link copiado!');
@@ -987,21 +928,19 @@ function enviarEmailsMassa() {
   showToast(`📧 A abrir ${emailsList.length} emails...`);
 }
 
-// Função CORRIGIDA para enviar email
+// ==================== FUNÇÃO CORRIGIDA - ENVIO DE EMAIL INDIVIDUAL ====================
 function enviarEmailIndividual(email, nome, link, prazo, cursoNome) {
     if (!email) {
         showToast('❌ Este colaborador não tem email');
         return;
     }
     
-    // Garantir que o link está limpo para o email
-    const linkLimpo = link;
-    
+    // CORRIGIDO: Acentuação correta
     const assunto = encodeURIComponent(`[Birkenstock] Formação: ${cursoNome}`);
     const corpo = encodeURIComponent(
         `Olá ${nome},\n\n` +
         `Foi-lhe atribuída a formação "${cursoNome}" na plataforma Birkenstock S&CC Portugal.\n\n` +
-        `Link de acesso: ${linkLimpo}\n\n` +
+        `Link de acesso: ${link}\n\n` +
         `Prazo: ${prazo}\n\n` +
         `Atenciosamente,\nEquipa de Formação Birkenstock`
     );
@@ -1009,6 +948,7 @@ function enviarEmailIndividual(email, nome, link, prazo, cursoNome) {
     window.open(`mailto:${email}?subject=${assunto}&body=${corpo}`);
     showToast(`📧 A abrir email para ${nome}`);
 }
+
 // ==================== ACOMPANHAMENTO ====================
 function renderAcompanhamento() {
   const filtroFormacao = document.getElementById('filtro-formacao-acompanhar')?.value || '';
@@ -1061,7 +1001,6 @@ function renderAcompanhamento() {
     </div>
   `).join('');
   
-  // Adicionar event listeners
   document.querySelectorAll('.btn-ver-certificado').forEach(btn => {
     btn.addEventListener('click', () => visualizarCertificadoAtribuicao(btn.dataset.id));
   });
@@ -1074,10 +1013,9 @@ function relembrarColaborador(atribuicaoId) {
   const atribuicao = atribuicoes.find(a => a.id === atribuicaoId);
   if (!atribuicao) return;
   
-  const link = atribuicao.link;
   const assunto = encodeURIComponent(`[Birkenstock] Lembrete: ${atribuicao.cursoNome}`);
   const corpo = encodeURIComponent(
-    `Olá ${atribuicao.colaboradorNome},\n\nRecordamos que ainda tem pendente a formação "${atribuicao.cursoNome}".\n\nPrazo: ${atribuicao.prazo}\n\nAceda através do link:\n${link}\n\nAtenciosamente,\nEquipa de Formação Birkenstock`
+    `Olá ${atribuicao.colaboradorNome},\n\nRecordamos que ainda tem pendente a formação "${atribuicao.cursoNome}".\n\nPrazo: ${atribuicao.prazo}\n\nAceda através do link:\n${atribuicao.link}\n\nAtenciosamente,\nEquipa de Formação Birkenstock`
   );
   window.open(`mailto:${atribuicao.colaboradorEmail}?subject=${assunto}&body=${corpo}`);
   showToast(`📧 Email de lembrete aberto para ${atribuicao.colaboradorNome}`);
@@ -1240,7 +1178,6 @@ function renderHistorico() {
     `;
   }).join('');
   
-  // Adicionar event listeners
   document.querySelectorAll('.btn-ver-certificado-historico').forEach(btn => {
     btn.addEventListener('click', () => visualizarCertificadoHistorico(btn.dataset.id));
   });
@@ -1429,7 +1366,6 @@ function editarFormacao(id) {
   document.getElementById('editando-id').innerHTML = `✏️ Editando: ${escapeHtml(formacao.nome)}`;
   document.getElementById('btn-cancelar-edicao').style.display = 'inline-block';
   
-  // Mudar para a aba de formações
   document.querySelector('.admin-tab[data-tab="formacoes"]')?.click();
 }
 
@@ -1448,8 +1384,6 @@ function cancelarEdicao() {
 
 // ==================== UTILITÁRIOS ====================
 function switchTab(tabId) {
-  console.log("📑 Mudando para aba:", tabId);
-  
   document.querySelectorAll('.sec').forEach(s => s.classList.remove('active'));
   const secAtiva = document.getElementById(`sec-${tabId}`);
   if (secAtiva) secAtiva.classList.add('active');
@@ -1504,7 +1438,6 @@ function setupEventListeners() {
   const atribuirCurso = document.getElementById('atribuir-curso');
   if (atribuirCurso) {
     atribuirCurso.addEventListener('change', () => {
-      console.log("📚 Formação selecionada:", atribuirCurso.value);
       atualizarSelectores();
     });
   }
