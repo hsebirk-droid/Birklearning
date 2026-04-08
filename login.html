@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | Birkenstock S&CC Portugal</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/login.css">
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-card-top">
+        <div class="logo-large">
+          BIRKENSTOCK
+          <small>S&CC Portugal</small>
+        </div>
+      </div>
+
+      <div class="login-card-body">
+        <h2>Plataforma de Formação</h2>
+
+        <div class="login-tabs">
+          <button class="login-tab active" data-tab="colaborador">👥 Colaborador</button>
+          <button class="login-tab" data-tab="admin">👑 Administrador</button>
+        </div>
+
+        <div id="errmsg" class="errmsg"></div>
+
+        <div id="form-colab">
+          <div class="fg">
+            <label>Email ou Username</label>
+            <input type="text" id="c-email" placeholder="nome@email.pt ou username" autocomplete="username">
+          </div>
+
+          <div class="fg">
+            <label>Palavra-passe</label>
+            <input type="password" id="c-pass" placeholder="••••••••" autocomplete="current-password">
+          </div>
+
+          <button class="btnlogin" id="btn-colab">
+            <i class="fas fa-sign-in-alt"></i> Entrar
+          </button>
+        </div>
+
+        <div id="form-admin" style="display:none">
+          <div class="fg">
+            <label>Utilizador</label>
+            <input type="text" id="a-user" value="admin" readonly style="background:#f5f5f5">
+          </div>
+
+          <div class="fg">
+            <label>Palavra-passe</label>
+            <input type="password" id="a-pass" placeholder="••••••••" autocomplete="current-password">
+          </div>
+
+          <button class="btnlogin" id="btn-admin">
+            <i class="fas fa-lock"></i> Entrar como Gestor
+          </button>
+        </div>
+
+        <div class="password-hint">
+          <span><i class="far fa-question-circle"></i> Dúvidas? Contacte o RH</span>
+        </div>
+      </div>
+
+      <div class="login-footer">
+        &copy; 2026 Birkenstock S&CC Portugal · Plataforma de Formação
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+
+  <script>
+    const errMsgDiv = document.getElementById('errmsg');
+    const formColab = document.getElementById('form-colab');
+    const formAdmin = document.getElementById('form-admin');
+    const tabColab = document.querySelector('[data-tab="colaborador"]');
+    const tabAdmin = document.querySelector('[data-tab="admin"]');
+    const btnColab = document.getElementById('btn-colab');
+    const btnAdmin = document.getElementById('btn-admin');
+    const inputEmail = document.getElementById('c-email');
+    const inputPassColab = document.getElementById('c-pass');
+    const inputPassAdmin = document.getElementById('a-pass');
+
+    let isLoggingIn = false;
+
+    function showError(message) {
+      errMsgDiv.textContent = message;
+      errMsgDiv.style.display = 'block';
+      setTimeout(() => errMsgDiv.style.display = 'none', 5000);
+    }
+
+    function setLoading(button, isLoading, text = 'A validar...') {
+      if (!button) return;
+
+      if (isLoading) {
+        button.disabled = true;
+        button.dataset.original = button.innerHTML;
+        button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${text}`;
+      } else {
+        button.disabled = false;
+        button.innerHTML = button.dataset.original || button.innerHTML;
+      }
+    }
+
+    async function handleLoginColaborador() {
+      if (isLoggingIn) return;
+
+      const emailOuUser = inputEmail.value.trim();
+      const pass = inputPassColab.value;
+
+      if (!emailOuUser || !pass) {
+        return showError('Preencha todos os campos.');
+      }
+
+      isLoggingIn = true;
+      setLoading(btnColab, true);
+
+      try {
+        const ok = await window.loginColaborador(emailOuUser, pass);
+        if (ok) {
+          window.showToast('✅ Login efetuado com sucesso!');
+          setTimeout(() => location.href = 'dashboard.html', 800);
+        } else {
+          showError('Credenciais inválidas. Verifique e tente novamente.');
+          inputPassColab.value = '';
+        }
+      } catch (e) {
+        console.error(e);
+        showError('Erro ao iniciar sessão. Tente novamente.');
+      }
+
+      setLoading(btnColab, false);
+      isLoggingIn = false;
+    }
+
+    function handleLoginAdmin() {
+      if (isLoggingIn) return;
+
+      const pass = inputPassAdmin.value;
+      if (!pass) return showError('Insira a palavra-passe.');
+
+      isLoggingIn = true;
+      setLoading(btnAdmin, true);
+
+      setTimeout(() => {
+        const ok = window.loginAdmin(pass);
+        if (ok) {
+          window.showToast('✅ Acesso de administrador concedido!');
+          setTimeout(() => location.href = 'admin.html', 800);
+        } else {
+          showError('Palavra-passe incorreta.');
+          inputPassAdmin.value = '';
+        }
+        setLoading(btnAdmin, false);
+        isLoggingIn = false;
+      }, 250);
+    }
+
+    function switchToColab() {
+      tabColab.classList.add('active');
+      tabAdmin.classList.remove('active');
+      formColab.style.display = 'block';
+      formAdmin.style.display = 'none';
+      errMsgDiv.style.display = 'none';
+      inputEmail.focus();
+    }
+
+    function switchToAdmin() {
+      tabAdmin.classList.add('active');
+      tabColab.classList.remove('active');
+      formAdmin.style.display = 'block';
+      formColab.style.display = 'none';
+      errMsgDiv.style.display = 'none';
+      inputPassAdmin.focus();
+    }
+
+    function checkIfAlreadyLoggedIn() {
+      if (window.isAuthenticated && window.isAuthenticated()) {
+        const user = window.getCurrentUser();
+        if (user && user.type === 'admin') {
+          location.href = 'admin.html';
+        } else if (user && user.type === 'colaborador') {
+          location.href = 'dashboard.html';
+        }
+      }
+    }
+
+    btnColab.onclick = handleLoginColaborador;
+    btnAdmin.onclick = handleLoginAdmin;
+    tabColab.onclick = switchToColab;
+    tabAdmin.onclick = switchToAdmin;
+
+    inputEmail.addEventListener('keypress', e => {
+      if (e.key === 'Enter') inputPassColab.focus();
+    });
+
+    inputPassColab.addEventListener('keypress', e => {
+      if (e.key === 'Enter') handleLoginColaborador();
+    });
+
+    inputPassAdmin.addEventListener('keypress', e => {
+      if (e.key === 'Enter') handleLoginAdmin();
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      checkIfAlreadyLoggedIn();
+      inputEmail.focus();
+    });
+  </script>
+</body>
+</html>

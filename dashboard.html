@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard | Birkenstock S&CC Portugal</title>
+  
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+  <div class="dashboard-header">
+    <div class="logo-text">
+      BIRKENSTOCK
+      <small>S&CC Portugal</small>
+    </div>
+    <div class="user-menu">
+      <button class="user-menu-btn" id="userMenuBtn">
+        <span id="userAvatar">U</span>
+      </button>
+      <div class="user-dropdown" id="userDropdown">
+        <a href="#" onclick="window.openProfileModal(); return false;"><i class="fas fa-user-circle"></i> Meu Perfil</a>
+        <a href="#" onclick="window.openCompletedModal(); return false;"><i class="fas fa-check-circle"></i> Concluídas</a>
+        <hr>
+        <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Sair</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-container">
+    <div class="welcome-banner">
+      <h1 id="welcomeMessage">Bem-vindo de volta!</h1>
+      <p>Continue de onde parou ou explore novas formações.</p>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon" style="background: var(--success-bg);">📚</div>
+        <div class="stat-info">
+          <h3 id="coursesCompleted">0</h3>
+          <p>Formações concluídas</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: var(--warning-bg);">▶</div>
+        <div class="stat-info">
+          <h3 id="coursesInProgress">0</h3>
+          <p>Em andamento</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: var(--purple-bg);">🎓</div>
+        <div class="stat-info">
+          <h3 id="certificatesCount">0</h3>
+          <p>Certificados</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="search-filters">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Pesquisar formação...">
+      </div>
+      <div class="filter-buttons">
+        <button class="filter-btn active" data-filter="todas">Todas</button>
+        <button class="filter-btn" data-filter="em_andamento">Em andamento</button>
+        <button class="filter-btn" data-filter="concluidas">Concluídas</button>
+      </div>
+    </div>
+
+    <div id="loading" class="loading" style="display: none;">📚 A carregar formações...</div>
+    <div id="coursesGrid" class="courses-grid"></div>
+  </div>
+
+  <!-- Modal Perfil -->
+  <div id="profileModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Meu Perfil</h3>
+        <button class="modal-close" onclick="window.closeProfileModal()">✕</button>
+      </div>
+      <div class="profile-info">
+        <div class="profile-avatar" id="profileAvatar">U</div>
+        <h3 id="profileName">Nome</h3>
+        <p id="profileEmail">email@birkenstock.pt</p>
+        <p id="profileMatricula">Matrícula: ---</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Concluídas -->
+  <div id="completedModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Formações Concluídas</h3>
+        <button class="modal-close" onclick="window.closeCompletedModal()">✕</button>
+      </div>
+      <div id="completedList"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- Scripts -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>

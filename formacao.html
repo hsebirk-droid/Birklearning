@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Formação | Birkenstock S&CC Portugal</title>
+  
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  
+  <!-- Bibliotecas para PDF e Certificado -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/formacao.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo-text">
+    BIRKENSTOCK
+    <small>S&CC Portugal · Formação</small>
+  </div>
+  <div class="user-name" id="user-name-display">Carregando...</div>
+  <div class="deadline-badge">Prazo: <strong id="prazo-data">---</strong></div>
+  <button class="btn-sair" id="btn-sair">Sair</button>
+</div>
+
+<div class="hero">
+  <div class="hero-inner">
+    <h1 id="hero-title">Carregando formação...</h1>
+    <p id="hero-desc"></p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">⏱️ <span id="meta-duration">--</span></div>
+      <div class="hero-meta-item">📚 <span id="meta-modules">-- módulos</span></div>
+      <div class="hero-meta-item">📝 Avaliação</div>
+      <div class="hero-meta-item">🏅 Certificado</div>
+    </div>
+  </div>
+</div>
+
+<div class="progress-strip">
+  <div class="progress-strip-inner">
+    <div class="progress-label"><span>Progresso</span><strong id="progress-text">0%</strong></div>
+    <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+  </div>
+</div>
+
+<div class="formacao-main">
+  <div id="loading" class="loading">📚 A carregar formação...</div>
+  <div id="modules-container" style="display:none;"></div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<!-- Scripts -->
+<script src="js/firebase-config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/formacao.js"></script>
+</body>
+</html>

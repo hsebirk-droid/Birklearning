@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Birkenstock S&CC Portugal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .redirect-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #00338D, #00277A);
+    }
+    .redirect-card {
+      text-align: center;
+      padding: 48px;
+      background: #fff;
+      border-radius: 24px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      max-width: 400px;
+      margin: 20px;
+    }
+    .redirect-logo {
+      font-family: 'Fraunces', serif;
+      font-size: 2rem;
+      font-weight: 800;
+      color: #00338D;
+      margin-bottom: 16px;
+    }
+    .redirect-logo small {
+      font-size: 0.8rem;
+      font-weight: 400;
+      color: #616365;
+      display: block;
+    }
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid #e2e8f0;
+      border-top-color: #00338D;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 24px auto;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .redirect-text {
+      color: #616365;
+      margin-top: 16px;
+    }
+    .manual-link {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+    }
+    .manual-link a {
+      color: #00338D;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .manual-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="redirect-container">
+    <div class="redirect-card">
+      <div class="redirect-logo">
+        BIRKENSTOCK
+        <small>S&CC Portugal</small>
+      </div>
+      <div class="spinner"></div>
+      <div class="redirect-text">
+        <p>A redirecionar para a plataforma de formação...</p>
+      </div>
+      <div class="manual-link">
+        <p>Se não for redirecionado automaticamente:</p>
+        <a href="login.html">Clique aqui para aceder à plataforma →</a>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Redirecionamento automático após 2 segundos
+    setTimeout(function() {
+      window.location.href = 'login.html';
+    }, 2000);
+  </script>
+</body>
+</html>
+
