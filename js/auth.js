@@ -1,5 +1,5 @@
 // ============================================
-// AUTH - GESTÃO DE AUTENTICAÇÃO (SEM GOOGLE)
+// AUTH - GESTÃO DE AUTENTICAÇÃO
 // ============================================
 
 function getAdminPassword() {
@@ -37,7 +37,6 @@ function generateUsername(nome, email) {
   if (email && email.includes('@')) {
     return email.split('@')[0].toLowerCase();
   }
-
   return String(nome || 'utilizador')
     .trim()
     .toLowerCase()
@@ -47,62 +46,31 @@ function generateUsername(nome, email) {
     .replace(/^\.+|\.+$/g, '') || 'utilizador';
 }
 
-function inicializarDados() {
-  if (!localStorage.getItem('colaboradores')) {
-    const colaboradores = [
-      { id: 'c1', matricula: '001', user: 'joao.silva', nome: 'João Silva', email: 'joao.silva@birkenstock.pt', pass: '123456' },
-      { id: 'c2', matricula: '002', user: 'maria.santos', nome: 'Maria Santos', email: 'maria.santos@birkenstock.pt', pass: '123456' }
-    ];
-    localStorage.setItem('colaboradores', JSON.stringify(colaboradores));
-  }
-
-  if (!localStorage.getItem('formacoes')) {
-    const formacoes = [
-      {
-        id: '1',
-        nome: 'Atendimento ao Cliente',
-        descricao: 'Aprenda técnicas de atendimento ao cliente.',
-        duracao: '45 minutos',
-        icone: '💬',
-        modulos: [
-          { id: 'm1', titulo: 'Introdução', tipo: 'video', conteudo: { url: 'https://www.youtube.com/embed/dQw4w9WgXcQ' }, duracao: '10 min' }
-        ],
-        perguntas: [
-          { texto: 'Qual é a primeira impressão?', opcoes: ['Olhar nos olhos', 'Sorriso', 'Postura correta', 'Todas as anteriores'], correta: 'D' }
-        ]
-      }
-    ];
-    localStorage.setItem('formacoes', JSON.stringify(formacoes));
-  }
-}
-
 async function carregarColaboradores() {
-  inicializarDados();
-
-  if (window.firebaseReady && typeof window.carregarDoFirestore === 'function') {
-    const firestoreData = await window.carregarDoFirestore('colaboradores');
-    if (Array.isArray(firestoreData) && firestoreData.length) {
-      return firestoreData;
+  if (window.firebaseReady && window.db) {
+    try {
+      const snapshot = await window.db.collection('colaboradores').get();
+      const colaboradores = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (colaboradores.length) {
+        localStorage.setItem('colaboradores', JSON.stringify(colaboradores));
+        return colaboradores;
+      }
+    } catch (error) {
+      console.warn('Erro ao carregar do Firestore:', error);
     }
   }
-
   return JSON.parse(localStorage.getItem('colaboradores') || '[]');
 }
 
-async function guardarColaborador(colaborador) {
-  const colaboradores = JSON.parse(localStorage.getItem('colaboradores') || '[]');
-  const index = colaboradores.findIndex((item) => item.id === colaborador.id || item.email === colaborador.email);
-
-  if (index >= 0) {
-    colaboradores[index] = { ...colaboradores[index], ...colaborador };
-  } else {
-    colaboradores.push(colaborador);
-  }
-
-  localStorage.setItem('colaboradores', JSON.stringify(colaboradores));
-
-  if (window.firebaseReady && typeof window.salvarNoFirestore === 'function') {
-    await window.salvarNoFirestore('colaboradores', colaborador, colaborador.id);
+async function guardarColaboradorFirestore(colaborador) {
+  if (!window.firebaseReady || !window.db) return false;
+  try {
+    const id = colaborador.id || colaborador.email;
+    await window.db.collection('colaboradores').doc(id).set(colaborador, { merge: true });
+    return true;
+  } catch (error) {
+    console.error('Erro ao guardar no Firestore:', error);
+    return false;
   }
 }
 
@@ -110,50 +78,55 @@ async function loginColaborador(emailOuUser, pass) {
   const identifier = String(emailOuUser || '').trim().toLowerCase();
   if (!identifier || !pass) return false;
 
-  const colaboradores = await carregarColaboradores();
-
-  // Tentar login Firebase (apenas email/password - sem Google)
-  if (window.firebaseReady && identifier.includes('@') && window.auth) {
+  // Tentar login Firebase primeiro
+  if (window.firebaseReady && window.auth && identifier.includes('@')) {
     try {
       const cred = await window.auth.signInWithEmailAndPassword(identifier, pass);
       const firebaseUser = cred.user;
-      const email = (firebaseUser?.email || identifier).toLowerCase();
+      const email = firebaseUser.email.toLowerCase();
 
-      if (window.isAdminEmail?.(email)) {
-        persistAdminSession(firebaseUser?.displayName || 'Administrador', email);
+      if (window.isAdminEmail(email)) {
+        persistAdminSession(firebaseUser.displayName || 'Administrador', email);
         return true;
       }
 
-      let found = colaboradores.find((c) => String(c.email || '').toLowerCase() === email);
+      // Verificar se colaborador existe
+      const colaboradores = await carregarColaboradores();
+      let found = colaboradores.find(c => String(c.email || '').toLowerCase() === email);
+      
       if (!found) {
         found = {
           id: firebaseUser.uid,
           matricula: '',
           user: generateUsername(firebaseUser.displayName, email),
-          nome: firebaseUser.displayName || email,
-          email,
-          provider: 'password',
+          nome: firebaseUser.displayName || email.split('@')[0],
+          email: email,
           dataCriacao: new Date().toISOString()
         };
-        await guardarColaborador(found);
+        await guardarColaboradorFirestore(found);
+        const cols = await carregarColaboradores();
+        if (!cols.find(c => c.email === email)) {
+          cols.push(found);
+          localStorage.setItem('colaboradores', JSON.stringify(cols));
+        }
       }
 
       persistCollaboratorSession(found);
       return true;
     } catch (error) {
-      console.warn('⚠️ Login Firebase falhou, a tentar fallback local:', error?.message || error);
+      console.warn('Login Firebase falhou:', error.message);
     }
   }
 
   // Fallback para login local
-  const found = colaboradores.find((c) => {
+  const colaboradores = await carregarColaboradores();
+  const found = colaboradores.find(c => {
     const user = String(c.user || '').toLowerCase();
     const email = String(c.email || '').toLowerCase();
     return (user === identifier || email === identifier) && c.pass === pass;
   });
 
   if (!found) return false;
-
   persistCollaboratorSession(found);
   return true;
 }
@@ -176,17 +149,15 @@ function getCurrentUser() {
   if (admin) {
     return { type: 'admin', name: nome || 'Administrador', email };
   }
-
   if (colaborador) {
     return {
       type: 'colaborador',
       name: nome,
-      email,
-      matricula,
+      email: email,
+      matricula: matricula,
       user: colaborador
     };
   }
-
   if (window.auth?.currentUser) {
     const user = window.auth.currentUser;
     return {
@@ -197,7 +168,6 @@ function getCurrentUser() {
       user: generateUsername(user.displayName, user.email)
     };
   }
-
   return null;
 }
 
@@ -207,7 +177,6 @@ function isAuthenticated() {
 
 async function logout() {
   clearSessionStorage();
-
   if (window.auth?.currentUser) {
     try {
       await window.auth.signOut();
@@ -215,21 +184,70 @@ async function logout() {
       console.warn('Erro ao terminar sessão Firebase:', error);
     }
   }
-
   window.location.href = 'login.html';
 }
 
-function getColaboradores() {
-  inicializarDados();
-  return JSON.parse(localStorage.getItem('colaboradores') || '[]');
+async function getColaboradores() {
+  return await carregarColaboradores();
 }
 
+// Login com Google (versão compatível com Firebase 8)
+async function loginWithGoogle() {
+  if (!window.firebaseReady || !window.auth) {
+    window.showToast('❌ Firebase não disponível');
+    return false;
+  }
+  
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    const result = await window.auth.signInWithPopup(provider);
+    const user = result.user;
+    const email = user.email.toLowerCase();
+    
+    if (window.isAdminEmail(email)) {
+      persistAdminSession(user.displayName, email);
+      return true;
+    }
+    
+    const colaboradores = await carregarColaboradores();
+    let found = colaboradores.find(c => String(c.email || '').toLowerCase() === email);
+    
+    if (!found) {
+      found = {
+        id: user.uid,
+        matricula: '',
+        user: generateUsername(user.displayName, email),
+        nome: user.displayName || email.split('@')[0],
+        email: email,
+        provider: 'google',
+        dataCriacao: new Date().toISOString()
+      };
+      await guardarColaboradorFirestore(found);
+      const cols = await carregarColaboradores();
+      if (!cols.find(c => c.email === email)) {
+        cols.push(found);
+        localStorage.setItem('colaboradores', JSON.stringify(cols));
+      }
+    }
+    
+    persistCollaboratorSession(found);
+    return true;
+  } catch (error) {
+    console.error('Erro no login Google:', error);
+    window.showToast('❌ Erro no login com Google: ' + error.message);
+    return false;
+  }
+}
+
+// Expor funções globalmente
 window.loginColaborador = loginColaborador;
 window.loginAdmin = loginAdmin;
+window.loginWithGoogle = loginWithGoogle;
 window.getCurrentUser = getCurrentUser;
 window.isAuthenticated = isAuthenticated;
 window.logout = logout;
 window.getColaboradores = getColaboradores;
 window.generateUsername = generateUsername;
 
-console.log('✅ auth.js carregado com sucesso (sem Google Auth)');
+console.log('✅ auth.js carregado com sucesso');
