@@ -49,10 +49,49 @@ function gerarTokenSeguro(dados) {
 }
 
 // ==================== DADOS ====================
-function carregarDadosExemplo() {
-  if (localStorage.getItem('formacoes')) {
-    formacoes = JSON.parse(localStorage.getItem('formacoes'));
+// ==================== DADOS (CORRIGIDO - FIRESTORE PRIMEIRO) ====================
+async function carregarDadosExemplo() {
+  console.log('📦 A carregar dados...');
+  
+  // 1. Tentar carregar do FIRESTORE primeiro (nuvem)
+  if (window.firebaseReady && window.db) {
+    try {
+      console.log('☁️ A carregar do Firestore...');
+      
+      const snapshotFormacoes = await window.db.collection('formacoes').get();
+      formacoes = snapshotFormacoes.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log(`✅ ${formacoes.length} formações carregadas do Firestore`);
+      
+      const snapshotColabs = await window.db.collection('colaboradores').get();
+      colaboradores = snapshotColabs.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log(`✅ ${colaboradores.length} colaboradores carregados do Firestore`);
+      
+      const snapshotAtrib = await window.db.collection('atribuicoes').get();
+      atribuicoes = snapshotAtrib.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log(`✅ ${atribuicoes.length} atribuições carregadas do Firestore`);
+      
+      const snapshotHist = await window.db.collection('historicos').get();
+      historicos = snapshotHist.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log(`✅ ${historicos.length} históricos carregados do Firestore`);
+      
+      // Atualizar localStorage com os dados da nuvem (backup)
+      localStorage.setItem('formacoes', JSON.stringify(formacoes));
+      localStorage.setItem('colaboradores', JSON.stringify(colaboradores));
+      localStorage.setItem('atribuicoes', JSON.stringify(atribuicoes));
+      localStorage.setItem('historicos', JSON.stringify(historicos));
+      
+    } catch (error) {
+      console.error('❌ Erro ao carregar do Firestore:', error);
+      carregarDoLocalStorage();
+    }
   } else {
+    console.warn('⚠️ Firestore indisponível, usando localStorage');
+    carregarDoLocalStorage();
+  }
+  
+  // Se não houver dados, criar exemplos E GUARDAR NO FIRESTORE
+  if (!formacoes || formacoes.length === 0) {
+    console.log('📝 Criando formações de exemplo...');
     formacoes = [
       {
         id: "1",
@@ -80,48 +119,84 @@ function carregarDadosExemplo() {
         perguntas: []
       }
     ];
-    localStorage.setItem('formacoes', JSON.stringify(formacoes));
+    await salvarFormacoes();
   }
-
-  if (localStorage.getItem('colaboradores')) {
-    colaboradores = JSON.parse(localStorage.getItem('colaboradores'));
-  } else {
+  
+  if (!colaboradores || colaboradores.length === 0) {
+    console.log('📝 Criando colaboradores de exemplo...');
     colaboradores = [
       { id: "c1", matricula: "001", user: "joao.silva", nome: "João Silva", email: "joao.silva@birkenstock.pt", pass: "123456" },
       { id: "c2", matricula: "002", user: "maria.santos", nome: "Maria Santos", email: "maria.santos@birkenstock.pt", pass: "123456" }
     ];
-    localStorage.setItem('colaboradores', JSON.stringify(colaboradores));
+    await salvarColaboradores();
   }
-
-  if (localStorage.getItem('atribuicoes')) {
-    atribuicoes = JSON.parse(localStorage.getItem('atribuicoes'));
-  } else {
-    atribuicoes = [];
-    localStorage.setItem('atribuicoes', JSON.stringify(atribuicoes));
-  }
-
-  if (localStorage.getItem('historicos')) {
-    historicos = JSON.parse(localStorage.getItem('historicos'));
-  } else {
-    historicos = [];
-    localStorage.setItem('historicos', JSON.stringify(historicos));
-  }
+  
+  console.log('✅ Dados carregados com sucesso!');
 }
 
-function salvarFormacoes() {
+function carregarDoLocalStorage() {
+  formacoes = JSON.parse(localStorage.getItem('formacoes') || '[]');
+  colaboradores = JSON.parse(localStorage.getItem('colaboradores') || '[]');
+  atribuicoes = JSON.parse(localStorage.getItem('atribuicoes') || '[]');
+  historicos = JSON.parse(localStorage.getItem('historicos') || '[]');
+  console.log('📦 Dados carregados do localStorage (fallback)');
+}
+
+// ==================== FUNÇÕES DE SALVAR (FIRESTORE + LOCALSTORAGE) ====================
+async function salvarFormacoes() {
   localStorage.setItem('formacoes', JSON.stringify(formacoes));
+  if (window.firebaseReady && window.db) {
+    try {
+      for (const f of formacoes) {
+        await window.db.collection('formacoes').doc(f.id).set(f, { merge: true });
+      }
+      console.log('☁️ Formações guardadas no Firestore');
+    } catch (error) {
+      console.error('Erro ao guardar formações no Firestore:', error);
+    }
+  }
 }
 
-function salvarColaboradores() {
+async function salvarColaboradores() {
   localStorage.setItem('colaboradores', JSON.stringify(colaboradores));
+  if (window.firebaseReady && window.db) {
+    try {
+      for (const c of colaboradores) {
+        await window.db.collection('colaboradores').doc(c.id).set(c, { merge: true });
+      }
+      console.log('☁️ Colaboradores guardados no Firestore');
+    } catch (error) {
+      console.error('Erro ao guardar colaboradores no Firestore:', error);
+    }
+  }
 }
 
-function salvarAtribuicoes() {
+async function salvarAtribuicoes() {
   localStorage.setItem('atribuicoes', JSON.stringify(atribuicoes));
+  if (window.firebaseReady && window.db) {
+    try {
+      for (const a of atribuicoes) {
+        await window.db.collection('atribuicoes').doc(a.id).set(a, { merge: true });
+      }
+      console.log('☁️ Atribuições guardadas no Firestore');
+    } catch (error) {
+      console.error('Erro ao guardar atribuições no Firestore:', error);
+    }
+  }
 }
 
-function salvarHistoricos() {
+async function salvarHistoricos() {
   localStorage.setItem('historicos', JSON.stringify(historicos));
+  if (window.firebaseReady && window.db) {
+    try {
+      for (const h of historicos) {
+        await window.db.collection('historicos').doc(h.id).set(h, { merge: true });
+      }
+      console.log('☁️ Históricos guardados no Firestore');
+    } catch (error) {
+      console.error('Erro ao guardar históricos no Firestore:', error);
+    }
+  }
 }
 
 function getColaboradoresList() {
