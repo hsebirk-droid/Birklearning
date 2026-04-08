@@ -49,7 +49,6 @@ function checkAuth() {
   const usuario = localStorage.getItem('usuarioAtivo');
   const admin = localStorage.getItem('usuarioAdmin');
   const firebaseUser = window.auth?.currentUser || null;
-
   return !!(usuario || admin || firebaseUser);
 }
 
@@ -69,7 +68,6 @@ function converterLinkGoogleDrive(url) {
     return url;
   }
   
-  // Google Drive
   let fileId = null;
   const patterns = [
     /\/file\/d\/([^\/]+)/,
@@ -90,7 +88,6 @@ function converterLinkGoogleDrive(url) {
     return `https://drive.google.com/file/d/${fileId}/preview`;
   }
   
-  // YouTube
   if (url.includes('youtube.com/watch')) {
     const videoId = url.split('v=')[1]?.split('&')[0];
     if (videoId) return `https://www.youtube.com/embed/${videoId}`;
@@ -139,16 +136,12 @@ function downloadExcel(data, filename, sheetName = 'Dados') {
 // ==================== DETECÇÃO DE SCROLL ====================
 function detectarScrollCompleto(elementId, onComplete) {
   const element = document.getElementById(elementId);
-  if (!element) {
-    console.warn("Elemento não encontrado:", elementId);
-    return;
-  }
+  if (!element) return;
   
   let hasScrolledToBottom = false;
   
   const checkImmediate = () => {
     if (element.scrollHeight <= element.clientHeight + 5) {
-      console.log("📄 Conteúdo curto, completo automaticamente");
       if (onComplete) onComplete();
       return true;
     }
@@ -161,7 +154,6 @@ function detectarScrollCompleto(elementId, onComplete) {
     if (!hasScrolledToBottom && 
         element.scrollTop + element.clientHeight >= element.scrollHeight - 10) {
       hasScrolledToBottom = true;
-      console.log("✅ Scroll completo detectado");
       if (onComplete) onComplete();
       element.removeEventListener('scroll', checkScroll);
     }
@@ -171,7 +163,7 @@ function detectarScrollCompleto(elementId, onComplete) {
   setTimeout(checkScroll, 500);
 }
 
-// ==================== FIREBASE HELPERS ====================
+// ==================== FIRESTORE HELPERS ====================
 async function salvarNoFirestore(colecao, dados, id = null) {
   try {
     if (!window.db || !window.firebaseReady) {
@@ -246,3 +238,5 @@ if (typeof window !== 'undefined') {
   window.salvarNoFirestore = salvarNoFirestore;
   window.carregarDoFirestore = carregarDoFirestore;
 }
+
+console.log('✅ utils.js carregado com sucesso');
