@@ -106,7 +106,7 @@ function lerTokenUrl() {
         }
     }
     
-    // Decodificar token
+    // Decodificar token (CORRIGIDO)
     try {
         // 1. Restaurar caracteres base64
         let base64 = token.replace(/-/g, '+').replace(/_/g, '/');
@@ -117,12 +117,19 @@ function lerTokenUrl() {
         }
         
         // 3. Decodificar base64
-        const utf8Str = atob(base64);
+        const binaryStr = atob(base64);
         
-        // 4. Decodificar URI
-        const jsonStr = decodeURIComponent(utf8Str);
+        // 4. Converter string binária para UTF-8 corretamente
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+        }
         
-        // 5. Parse JSON
+        // 5. Descodificar UTF-8
+        const decoder = new TextDecoder('utf-8');
+        const jsonStr = decoder.decode(bytes);
+        
+        // 6. Parse JSON
         const parsed = JSON.parse(jsonStr);
         
         if (parsed && parsed.user && parsed.cursoId) {
@@ -131,7 +138,23 @@ function lerTokenUrl() {
             return parsed;
         }
     } catch(e) {
-        console.warn("⚠️ Erro ao decodificar token:", e.message);
+        console.warn("⚠️ Erro ao decodificar token (método novo):", e.message);
+        
+        // Fallback para compatibilidade com tokens antigos
+        try {
+            let base64 = token.replace(/-/g, '+').replace(/_/g, '/');
+            while (base64.length % 4) base64 += '=';
+            const utf8Str = atob(base64);
+            const jsonStr = decodeURIComponent(escape(utf8Str));
+            const parsed = JSON.parse(jsonStr);
+            if (parsed && parsed.user && parsed.cursoId) {
+                console.log("✅ Token decodificado (fallback):", parsed.user, parsed.cursoId);
+                localStorage.setItem(`token_${token}`, JSON.stringify(parsed));
+                return parsed;
+            }
+        } catch(e2) {
+            console.warn("⚠️ Erro no fallback:", e2.message);
+        }
     }
     
     return null;
