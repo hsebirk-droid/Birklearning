@@ -95,29 +95,17 @@ async function carregarDadosExemplo() {
     formacoes = [
       {
         id: "1",
-        nome: "Atendimento ao Cliente",
-        descricao: "Aprenda técnicas de atendimento ao cliente para garantir a satisfação dos consumidores.",
+        nome: "Formaçaõ Teste",
+        descricao: "TESTE.",
         duracao: "45 minutos",
         icone: "💬",
         modulos: [
-          { id: "m1", titulo: "Introdução ao Atendimento", tipo: "video", conteudo: { url: "https://www.youtube.com/embed/dQw4w9WgXcQ" }, duracao: "10 min" },
-          { id: "m2", titulo: "Técnicas de Comunicação", tipo: "texto", conteudo: { texto: "<p>A comunicação eficaz é fundamental para um bom atendimento...</p>" }, duracao: "15 min" }
+          { id: "m1", titulo: "Exemplo", tipo: "video", conteudo: { url: "https://www.youtube.com/embed/dQw4w9WgXcQ" }, duracao: "10 min" },
         ],
         perguntas: [
           { id: "p1", texto: "Qual é a primeira impressão?", opcoes: ["Olhar nos olhos", "Sorriso", "Postura correta", "Todas as anteriores"], correta: "D" }
         ]
       },
-      {
-        id: "2",
-        nome: "Segurança no Trabalho",
-        descricao: "Normas e procedimentos de segurança para o ambiente laboral.",
-        duracao: "60 minutos",
-        icone: "🛡️",
-        modulos: [
-          { id: "m1", titulo: "EPI's e sua Utilização", tipo: "video", conteudo: { url: "https://www.youtube.com/embed/dQw4w9WgXcQ" }, duracao: "20 min" }
-        ],
-        perguntas: []
-      }
     ];
     await salvarFormacoes();
   }
