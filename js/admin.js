@@ -368,6 +368,7 @@ function gerarCodigoAtribuicao() {
 }
 
 // ==================== FUNÇÃO CORRIGIDA - ENVIO DE EMAIL ====================
+// ==================== FUNÇÃO CORRIGIDA - ENVIO DE EMAIL ====================
 function EnvioEmail() {
     const colabSelect = document.getElementById('select-colaborador');
     const colabId = colabSelect?.value;
@@ -390,18 +391,84 @@ function EnvioEmail() {
         return;
     }
 
-    // CORRIGIDO MANUALMENTE - Sem encodeURIComponent para evitar duplicação
-    const assunto = '[Birkenstock] Nova Formação Atribuída';
-    const corpo = `Olá ${colaborador.nome},\n\n` +
-        `Foi-lhe atribuída uma nova formação na plataforma Birkenstock S&CC Portugal.\n\n` +
-        `🔗 Link de acesso: ${link}\n\n` +
-        `📅 Prazo: ${document.getElementById('atrib-prazo')?.value || '31/12/2026'}\n\n` +
-        `Atenciosamente,\nEquipa de Formação Birkenstock`;
+    // CORRIGIDO - Texto SEM problemas de encoding
+    const assunto = 'Birkenstock - Nova Formacao Atribuida';
+    const corpo = `Ola ${colaborador.nome},\n\n` +
+        `Foi-lhe atribuida uma nova formacao na plataforma Birkenstock S&CC Portugal.\n\n` +
+        `Link de acesso: ${link}\n\n` +
+        `Prazo: ${document.getElementById('atrib-prazo')?.value || '31/12/2026'}\n\n` +
+        `Atenciosamente,\nEquipa de Formacao Birkenstock`;
     
-    // Usar mailto diretamente sem encodeURIComponent
     const mailtoLink = `mailto:${colaborador.email}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
-    window.open(mailtoLink);
+    window.location.href = mailtoLink;
     showToast(`📧 A abrir cliente de email para ${colaborador.nome}`);
+}
+
+// ==================== FUNÇÃO CORRIGIDA - ENVIO DE EMAIL INDIVIDUAL ====================
+function enviarEmailIndividual(email, nome, link, prazo, cursoNome) {
+    if (!email) {
+        showToast('❌ Este colaborador não tem email');
+        return;
+    }
+    
+    const assunto = `Birkenstock - Formacao: ${cursoNome}`;
+    const corpo = `Ola ${nome},\n\n` +
+        `Foi-lhe atribuida a formacao "${cursoNome}" na plataforma Birkenstock S&CC Portugal.\n\n` +
+        `Link de acesso: ${link}\n\n` +
+        `Prazo: ${prazo}\n\n` +
+        `Atenciosamente,\nEquipa de Formacao Birkenstock`;
+    
+    const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+    window.location.href = mailtoLink;
+    showToast(`📧 A abrir email para ${nome}`);
+}
+
+// ==================== FUNÇÃO CORRIGIDA - ENVIO DE EMAILS EM MASSA ====================
+function enviarEmailsMassa() {
+  if (!linksGerados.length) { showToast('❌ Gere links primeiro'); return; }
+  
+  const emailsList = linksGerados.filter(l => l.email).map(l => ({
+    nome: l.nome,
+    email: l.email,
+    link: l.link,
+    prazo: l.prazo,
+    curso: l.cursoNome
+  }));
+  
+  if (emailsList.length === 0) {
+    showToast('❌ Nenhum colaborador tem email');
+    return;
+  }
+  
+  emailsList.forEach(e => {
+    const assunto = `Birkenstock - Formacao: ${e.curso}`;
+    const corpo = `Ola ${e.nome},\n\n` +
+        `Foi-lhe atribuida a formacao "${e.curso}".\n\n` +
+        `Prazo: ${e.prazo}\n\n` +
+        `Aceda atraves do link:\n${e.link}\n\n` +
+        `Atenciosamente,\nEquipa de Formacao Birkenstock`;
+    
+    const mailtoLink = `mailto:${e.email}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+    window.open(mailtoLink);
+  });
+  showToast(`📧 A abrir ${emailsList.length} emails...`);
+}
+
+// ==================== FUNÇÃO CORRIGIDA - RELEMBRAR COLABORADOR ====================
+function relembrarColaborador(atribuicaoId) {
+  const atribuicao = atribuicoes.find(a => a.id === atribuicaoId);
+  if (!atribuicao) return;
+  
+  const assunto = `Birkenstock - Lembrete: ${atribuicao.cursoNome}`;
+  const corpo = `Ola ${atribuicao.colaboradorNome},\n\n` +
+      `Recordamos que ainda tem pendente a formacao "${atribuicao.cursoNome}".\n\n` +
+      `Prazo: ${atribuicao.prazo}\n\n` +
+      `Aceda atraves do link:\n${atribuicao.link}\n\n` +
+      `Atenciosamente,\nEquipa de Formacao Birkenstock`;
+  
+  const mailtoLink = `mailto:${atribuicao.colaboradorEmail}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+  window.location.href = mailtoLink;
+  showToast(`📧 Email de lembrete aberto para ${atribuicao.colaboradorNome}`);
 }
 
 function copiarLink() {
@@ -1031,16 +1098,15 @@ function enviarEmailIndividual(email, nome, link, prazo, cursoNome) {
         return;
     }
     
-    // CORRIGIDO - Texto limpo sem problemas de encoding
-    const assunto = `[Birkenstock] Formação: ${cursoNome}`;
-    const corpo = `Olá ${nome},\n\n` +
-        `Foi-lhe atribuída a formação "${cursoNome}" na plataforma Birkenstock S&CC Portugal.\n\n` +
+    const assunto = `Birkenstock - Formacao: ${cursoNome}`;
+    const corpo = `Ola ${nome},\n\n` +
+        `Foi-lhe atribuida a formacao "${cursoNome}" na plataforma Birkenstock S&CC Portugal.\n\n` +
         `Link de acesso: ${link}\n\n` +
         `Prazo: ${prazo}\n\n` +
-        `Atenciosamente,\nEquipa de Formação Birkenstock`;
+        `Atenciosamente,\nEquipa de Formacao Birkenstock`;
     
     const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
-    window.open(mailtoLink);
+    window.location.href = mailtoLink;
     showToast(`📧 A abrir email para ${nome}`);
 }
 
