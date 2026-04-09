@@ -445,16 +445,50 @@ window.submitQuiz = function() {
   actions.appendChild(backBtn);
 };
 
-function registrarConclusao(nota) {
+async function registrarConclusao(nota) {
+  const novoHistorico = { 
+    id: Date.now().toString(), 
+    nome: nomeUser, 
+    nomeDisplay: nomeUserDisplay, 
+    email: userEmail, 
+    curso: cursoData.nome, 
+    cursoId, 
+    nota: nota + '%', 
+    data: window.formatDate(new Date()), 
+    dataTimestamp: Date.now(), 
+    certificadoId: window.gerarCertificadoId() 
+  };
+  
+  // 1. Guardar no localStorage (sempre)
   const historicos = JSON.parse(localStorage.getItem('historicos') || '[]');
-  historicos.push({ id: Date.now().toString(), nome: nomeUser, nomeDisplay: nomeUserDisplay, email: userEmail, curso: cursoData.nome, cursoId, nota: nota + '%', data: window.formatDate(new Date()), dataTimestamp: Date.now(), certificadoId: window.gerarCertificadoId() });
+  historicos.push(novoHistorico);
   localStorage.setItem('historicos', JSON.stringify(historicos));
   
+  // 2. Atualizar atribuições no localStorage
   const atribuicoes = JSON.parse(localStorage.getItem('atribuicoes') || '[]');
   const idx = atribuicoes.findIndex(a => a.colaboradorUser === nomeUser && a.cursoId === cursoId && a.status !== 'concluido');
-  if (idx !== -1) { atribuicoes[idx].status = 'concluido'; atribuicoes[idx].dataConclusao = new Date().toISOString(); atribuicoes[idx].nota = nota + '%'; }
+  if (idx !== -1) { 
+    atribuicoes[idx].status = 'concluido'; 
+    atribuicoes[idx].dataConclusao = new Date().toISOString(); 
+    atribuicoes[idx].nota = nota + '%'; 
+  }
   localStorage.setItem('atribuicoes', JSON.stringify(atribuicoes));
   localStorage.setItem('cursoConcluido', cursoId);
+  
+  // 3. GUARDAR NO FIRESTORE (para o admin ver!)
+  if (window.firebaseReady && window.db) {
+    try {
+      await window.db.collection('historicos').doc(novoHistorico.id).set(novoHistorico);
+      console.log('☁️ Histórico guardado no Firestore');
+      
+      if (idx !== -1) {
+        await window.db.collection('atribuicoes').doc(atribuicoes[idx].id).set(atribuicoes[idx], { merge: true });
+        console.log('☁️ Atribuição atualizada no Firestore');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao guardar no Firestore:', error);
+    }
+  }
 }
 
 window.retryQuiz = function() {
@@ -526,7 +560,25 @@ window.imprimirCertificado = async function() {
   win.document.write(`<html><body style="margin:0;"><img src="${canvas.toDataURL('image/png')}" style="width:100%;"></body><script>window.onload=function(){window.print();setTimeout(window.close,1000);}<\/script>`);
   win.document.close();
 };
+// Sincronizar dados locais com Firestore quando online
+async function sincronizarConclusoesPendentes() {
+  if (!window.firebaseReady || !window.db) return;
+  
+  const historicos = JSON.parse(localStorage.getItem('historicos') || '[]');
+  const atribuicoes = JSON.parse(localStorage.getItem('atribuicoes') || '[]');
+  
+  for (const h of historicos) {
+    try { await window.db.collection('historicos').doc(h.id).set(h, { merge: true }); } catch(e) {}
+  }
+  for (const a of atribuicoes) {
+    try { await window.db.collection('atribuicoes').doc(a.id).set(a, { merge: true }); } catch(e) {}
+  }
+  console.log('🔄 Sincronização com Firestore concluída');
+}
 
+window.addEventListener('load', () => {
+  setTimeout(sincronizarConclusoesPendentes, 2000);
+});
 // ==================== INICIALIZAÇÃO ====================
 document.getElementById('btn-sair')?.addEventListener('click', () => {
   if (confirm('Sair? O progresso será guardado.')) window.location.href = 'dashboard.html';
