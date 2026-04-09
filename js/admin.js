@@ -90,33 +90,52 @@ async function carregarDadosExemplo() {
   }
   
   // Se não houver dados, criar exemplos E GUARDAR NO FIRESTORE
-  if (!formacoes || formacoes.length === 0) {
-    console.log('📝 Criando formações de exemplo...');
-    formacoes = [
-      {
-        id: "1",
-        nome: "Formaçaõ Teste",
-        descricao: "TESTE.",
-        duracao: "45 minutos",
-        icone: "💬",
-        modulos: [
-          { id: "m1", titulo: "Exemplo", tipo: "video", conteudo: { url: "https://www.youtube.com/embed/dQw4w9WgXcQ" }, duracao: "10 min" },
-        ],
-        perguntas: [
-          { id: "p1", texto: "Qual é a primeira impressão?", opcoes: ["Olhar nos olhos", "Sorriso", "Postura correta", "Todas as anteriores"], correta: "D" }
-        ]
-      },
-    ];
-    await salvarFormacoes();
-  }
-  
-  if (!colaboradores || colaboradores.length === 0) {
-    console.log('📝 Criando colaboradores de exemplo...');
-    colaboradores = [
-      { id: "c1", matricula: "000", user: "teste.teste", nome: "Teste Teste", email: "teste.teste@email.pt", pass: "123456" },
-    ];
-    await salvarColaboradores();
-  }
+  // Se não houver dados, criar exemplos E GUARDAR NO FIRESTORE
+if (!formacoes || formacoes.length === 0) {
+  console.log('📝 Criando formações de exemplo...');
+  formacoes = [
+    {
+      id: "1",
+      nome: "Formação Tester",
+      descricao: "Formação de exemplo para testar a plataforma.",
+      duracao: "45 minutos",
+      icone: "💬",
+      modulos: [
+        { 
+          id: "m1", 
+          titulo: "Módulo de Exemplo", 
+          tipo: "video", 
+          conteudo: { url: "https://www.youtube.com/embed/dQw4w9WgXcQ" }, 
+          duracao: "10 min" 
+        }
+      ],
+      perguntas: [
+        { 
+          id: "p1", 
+          texto: "Qual é a primeira impressão no atendimento ao cliente?", 
+          opcoes: ["Olhar nos olhos", "Sorriso", "Postura correta", "Todas as anteriores"], 
+          correta: "D" 
+        }
+      ]
+    }
+  ];
+  await salvarFormacoes();
+}
+
+if (!colaboradores || colaboradores.length === 0) {
+  console.log('📝 Criando colaboradores de exemplo...');
+  colaboradores = [
+    { 
+      id: "c1", 
+      matricula: "000", 
+      user: "tester.formacao", 
+      nome: "Tester Formação", 
+      email: "tester.formacao@birkenstock.pt", 
+      pass: "123456" 
+    }
+  ];
+  await salvarColaboradores();
+}
   
   console.log('✅ Dados carregados com sucesso!');
 }
