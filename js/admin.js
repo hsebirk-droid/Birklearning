@@ -125,8 +125,7 @@ async function carregarDadosExemplo() {
   if (!colaboradores || colaboradores.length === 0) {
     console.log('📝 Criando colaboradores de exemplo...');
     colaboradores = [
-      { id: "c1", matricula: "001", user: "joao.silva", nome: "João Silva", email: "joao.silva@birkenstock.pt", pass: "123456" },
-      { id: "c2", matricula: "002", user: "maria.santos", nome: "Maria Santos", email: "maria.santos@birkenstock.pt", pass: "123456" }
+      { id: "c1", matricula: "000", user: "teste.teste", nome: "Teste Teste", email: "teste.teste@email.pt", pass: "123456" },
     ];
     await salvarColaboradores();
   }
@@ -771,7 +770,7 @@ function importColaboradores(files) {
 }
 
 function downloadModeloCSV() {
-  const csv = "matricula,nome,email,password\n001,João Silva,joao.silva@empresa.pt,birkenstock2024\n002,Maria Santos,maria.santos@empresa.pt,birkenstock2024";
+  const csv = "matricula,nome,email,password\n000,Teste Teste,teste.teste@email.pt,birkenstock2024";
   const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
