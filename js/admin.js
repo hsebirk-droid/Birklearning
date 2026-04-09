@@ -24,16 +24,25 @@ const defaultCert = {
 let certTemplate = JSON.parse(localStorage.getItem('cert_template') || JSON.stringify(defaultCert));
 
 // ==================== FUNÇÃO CORRIGIDA - TOKEN SEGURO ====================
+// ==================== FUNÇÃO CORRIGIDA - TOKEN SEGURO (UTF-8 CORRETO) ====================
 function gerarTokenSeguro(dados) {
     try {
         // 1. Converter para JSON
         const jsonStr = JSON.stringify(dados);
         
-        // 2. Codificar para UTF-8 corretamente (suporta ç, ã, õ, etc)
-        const utf8Str = unescape(encodeURIComponent(jsonStr));
+        // 2. Codificar para Base64 de forma segura com UTF-8
+        // Usar TextEncoder para garantir codificação UTF-8 correta
+        const encoder = new TextEncoder();
+        const utf8Bytes = encoder.encode(jsonStr);
         
-        // 3. Converter para base64
-        let base64 = btoa(utf8Str);
+        // 3. Converter bytes para Base64
+        let base64 = '';
+        const chunk = 0x8000;
+        for (let i = 0; i < utf8Bytes.length; i += chunk) {
+            const slice = utf8Bytes.subarray(i, i + chunk);
+            base64 += String.fromCharCode.apply(null, slice);
+        }
+        base64 = btoa(base64);
         
         // 4. Substituir caracteres problemáticos para URL
         base64 = base64
@@ -44,7 +53,11 @@ function gerarTokenSeguro(dados) {
         return base64;
     } catch(e) {
         console.error('Erro ao gerar token:', e);
-        return Date.now() + '_' + dados.user.replace(/[^a-z0-9]/gi, '_');
+        // Fallback: versão simplificada
+        const jsonStr = JSON.stringify(dados);
+        let base64 = btoa(unescape(encodeURIComponent(jsonStr)));
+        base64 = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        return base64;
     }
 }
 
