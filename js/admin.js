@@ -226,24 +226,62 @@ function gerarCodigoAtribuicao() {
     const colabId = document.getElementById('select-colaborador')?.value;
     const cursoId = document.getElementById('select-formacao')?.value;
     const prazo = document.getElementById('atrib-prazo')?.value || '31/12/2026';
+    
     if (!colabId) { showToast('❌ Selecione um colaborador'); return; }
     if (!cursoId) { showToast('❌ Selecione uma formação'); return; }
+    
     const colaborador = colaboradores.find(c => c.id === colabId);
     const formacao = formacoes.find(f => f.id === cursoId);
     if (!colaborador || !formacao) { showToast('❌ Dados não encontrados'); return; }
-    const tokenData = { user: colaborador.user || colaborador.email, nome: colaborador.nome, email: colaborador.email || '', matricula: colaborador.matricula || '', cursoId: cursoId, cursoNome: formacao.nome, prazo: prazo, ts: Date.now() };
-    const token = gerarTokenSeguro(tokenData);
+    
+    // Criar ID único CURTO
+    const tokenId = Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
+    
+    // Guardar dados completos no localStorage/Firestore
+    const tokenData = { 
+        user: colaborador.user || colaborador.email,
+        nome: colaborador.nome,
+        email: colaborador.email || '',
+        matricula: colaborador.matricula || '',
+        cursoId: cursoId, 
+        cursoNome: formacao.nome,
+        prazo: prazo, 
+        ts: Date.now() 
+    };
+    
+    localStorage.setItem(`token_${tokenId}`, JSON.stringify(tokenData));
+    
+    // Guardar também no Firestore se disponível
+    if (window.firebaseReady && window.db) {
+        window.db.collection('tokens').doc(tokenId).set(tokenData);
+    }
+    
     const urlBase = window.location.origin + window.location.pathname.replace('admin.html', '') + 'formacao.html';
-    const linkFinal = `${urlBase}?token=${token}`;
-    localStorage.setItem(`token_${token}`, JSON.stringify(tokenData));
-    const novaAtribuicao = { id: Date.now().toString(), colaboradorId: colaborador.id, colaboradorUser: colaborador.user || colaborador.email, colaboradorNome: colaborador.nome, colaboradorEmail: colaborador.email || '', colaboradorMatricula: colaborador.matricula || '', cursoId: cursoId, cursoNome: formacao.nome, prazo: prazo, status: 'pendente', dataAtribuicao: new Date().toISOString(), token: token, link: linkFinal };
+    const linkFinal = `${urlBase}?t=${tokenId}`;  // ← LINK CURTO!
+    
+    const novaAtribuicao = {
+        id: Date.now().toString(),
+        colaboradorId: colaborador.id,
+        colaboradorUser: colaborador.user || colaborador.email,
+        colaboradorNome: colaborador.nome,
+        colaboradorEmail: colaborador.email || '',
+        colaboradorMatricula: colaborador.matricula || '',
+        cursoId: cursoId,
+        cursoNome: formacao.nome,
+        prazo: prazo,
+        status: 'pendente',
+        dataAtribuicao: new Date().toISOString(),
+        token: tokenId,
+        link: linkFinal
+    };
+    
     atribuicoes.push(novaAtribuicao);
     salvarAtribuicoes();
-    const resultadoDiv = document.getElementById('resultado-atribuicao');
-    const linkSpan = document.getElementById('link-gerado');
-    if (resultadoDiv) resultadoDiv.style.display = 'block';
-    if (linkSpan) linkSpan.textContent = linkFinal;
+    
+    document.getElementById('resultado-atribuicao').style.display = 'block';
+    document.getElementById('link-gerado').textContent = linkFinal;
     window.linkAtualGerado = linkFinal;
+    
     showToast("✅ Atribuição registada com sucesso!");
 }
 
@@ -616,11 +654,29 @@ function gerarLinksMassa() {
             contadorReutilizados++;
             continue;
         }
+        
+        // NOVO: Usar token CURTO em vez de token longo
+        const tokenId = Date.now().toString(36) + Math.random().toString(36).substr(2, 4) + '_' + contadorSucesso;
         const tokenData = { user, nome, email, matricula, cursoId, cursoNome, prazo, timestamp: Date.now() };
-        const token = gerarTokenSeguro(tokenData);
-        const link = `${baseUrl}?token=${token}`;
-        localStorage.setItem(`token_${token}`, JSON.stringify(tokenData));
-        const novaAtribuicao = { id: Date.now().toString() + '_' + user.replace(/[^a-z0-9]/gi, '_'), colaboradorId: colaborador.id, colaboradorUser: user, colaboradorNome: nome, colaboradorEmail: email, colaboradorMatricula: matricula, cursoId, cursoNome, prazo, status: 'pendente', dataCriacao: new Date().toISOString(), token, link };
+        localStorage.setItem(`token_${tokenId}`, JSON.stringify(tokenData));
+        if (window.firebaseReady && window.db) {
+            window.db.collection('tokens').doc(tokenId).set(tokenData);
+        }
+        const link = `${baseUrl}?t=${tokenId}`;
+        
+        const novaAtribuicao = { 
+            id: Date.now().toString() + '_' + user.replace(/[^a-z0-9]/gi, '_'), 
+            colaboradorId: colaborador.id, 
+            colaboradorUser: user, 
+            colaboradorNome: nome, 
+            colaboradorEmail: email, 
+            colaboradorMatricula: matricula, 
+            cursoId, cursoNome, prazo, 
+            status: 'pendente', 
+            dataCriacao: new Date().toISOString(), 
+            token: tokenId, 
+            link: link 
+        };
         atribuicoes.push(novaAtribuicao);
         linksGerados.push({ nome, email, matricula, link, prazo, cursoNome, status: 'novo' });
         contadorSucesso++;
