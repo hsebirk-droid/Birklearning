@@ -1283,19 +1283,39 @@ function visualizarCertificadoHistorico(historicoId) {
   const registro = historicos.find(h => h.id === historicoId);
   if (!registro) return;
   
+  // NOVO: Buscar a formação para obter o conteúdo programático
+  const formacao = formacoes.find(f => f.id === registro.cursoId);
+  const conteudoProgramatico = formacao?.conteudoProgramatico || formacao?.descricao || 'Conteúdo não especificado';
+  
   const certId = registro.certificadoId || gerarCertificadoId();
   const fundoImagem = certTemplate.fundoImagem || 'assets/fundo_certificado.png';
   
   const certHtml = `
     <div id="certificado-visualizacao-pdf" style="background-image: url('${fundoImagem}'); background-size: cover; background-position: center; width: 100%; aspect-ratio: 210/297; position: relative; padding: 40px; box-sizing: border-box;">
       <div style="text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: center;">
-        <div style="font-family: 'Fraunces', serif; font-size: 2rem; font-weight: 900; color: #00338D;">${escapeHtml(registro.nomeDisplay || registro.nome)}</div>
-        <div style="font-size: 1.2rem; margin: 20px 0;">concluiu com sucesso a formação</div>
-        <div style="font-family: 'Fraunces', serif; font-size: 1.5rem; font-weight: 700; color: #C5A059;">${escapeHtml(registro.curso)}</div>
-        <div style="margin-top: 40px; display: flex; justify-content: center; gap: 40px;">
-          <div><div>NOTA FINAL</div><div style="font-size: 1.3rem;">${registro.nota}</div></div>
-          <div><div>DATA</div><div>${registro.data}</div></div>
-          <div><div>CERTIFICADO ID</div><div>${certId}</div></div>
+        <div style="font-family: 'Fraunces', serif; font-size: 2rem; font-weight: 900; color: #00338D; margin-bottom: 10px;">${escapeHtml(registro.nomeDisplay || registro.nome)}</div>
+        <div style="font-size: 1.2rem; margin: 20px 0; color: #616365;">concluiu com sucesso a formação</div>
+        <div style="font-family: 'Fraunces', serif; font-size: 1.5rem; font-weight: 700; color: #C5A059; margin-bottom: 20px;">${escapeHtml(registro.curso)}</div>
+        
+        <!-- CONTEÚDO PROGRAMÁTICO -->
+        <div style="margin: 20px 0; padding: 15px; background: rgba(0,51,141,0.05); border-radius: 8px; max-height: 150px; overflow-y: auto;">
+          <div style="font-size: 0.9rem; font-weight: 700; color: #00338D; margin-bottom: 8px;">CONTEÚDO PROGRAMÁTICO</div>
+          <div style="font-size: 0.8rem; color: #444; line-height: 1.4; text-align: left; white-space: pre-line;">${escapeHtml(conteudoProgramatico)}</div>
+        </div>
+        
+        <div style="margin-top: 30px; display: flex; justify-content: center; gap: 40px;">
+          <div style="text-align: center;">
+            <div style="font-size: 0.7rem; color: #616365;">NOTA FINAL</div>
+            <div style="font-size: 1.3rem; font-weight: 700; color: #00338D;">${registro.nota}</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 0.7rem; color: #616365;">DATA</div>
+            <div style="font-size: 1rem; font-weight: 600; color: #00338D;">${registro.data}</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 0.7rem; color: #616365;">CERTIFICADO ID</div>
+            <div style="font-family: monospace; font-size: 0.9rem; font-weight: 600; color: #00338D;">${certId}</div>
+          </div>
         </div>
       </div>
     </div>
