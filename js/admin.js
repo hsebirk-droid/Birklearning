@@ -1108,11 +1108,16 @@ function relembrarColaborador(atribuicaoId) {
   const atribuicao = atribuicoes.find(a => a.id === atribuicaoId);
   if (!atribuicao) return;
   
-  const assunto = encodeURIComponent(`[Birkenstock] Lembrete: ${atribuicao.cursoNome}`);
-  const corpo = encodeURIComponent(
-    `Olá ${atribuicao.colaboradorNome},\n\nRecordamos que ainda tem pendente a formação "${atribuicao.cursoNome}".\n\nPrazo: ${atribuicao.prazo}\n\nAceda através do link:\n${atribuicao.link}\n\nAtenciosamente,\nEquipa de Formação Birkenstock`
-  );
-  window.open(`mailto:${atribuicao.colaboradorEmail}?subject=${assunto}&body=${corpo}`);
+  // CORRIGIDO - Texto limpo sem problemas de encoding
+  const assunto = `[Birkenstock] Lembrete: ${atribuicao.cursoNome}`;
+  const corpo = `Olá ${atribuicao.colaboradorNome},\n\n` +
+      `Recordamos que ainda tem pendente a formação "${atribuicao.cursoNome}".\n\n` +
+      `Prazo: ${atribuicao.prazo}\n\n` +
+      `Aceda através do link:\n${atribuicao.link}\n\n` +
+      `Atenciosamente,\nEquipa de Formação Birkenstock`;
+  
+  const mailtoLink = `mailto:${atribuicao.colaboradorEmail}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+  window.open(mailtoLink);
   showToast(`📧 Email de lembrete aberto para ${atribuicao.colaboradorNome}`);
 }
 
