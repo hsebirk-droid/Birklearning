@@ -525,7 +525,7 @@ window.showCertificate = function(nota) {
       <div class="cert-actions">
         <button class="action-btn action-btn-download" id="btn-descarregar-pdf">📄 Descarregar PDF</button>
         <button class="action-btn" id="btn-imprimir-certificado">🖨️ Imprimir</button>
-        <button class="action-btn" onclick="window.location.href='dashboard.html'">🏠 Dashboard</button>
+        <button class="action-btn" onclick="window.location.href='login.html'">🏠 Sair</button>
       </div>
     </div>
   `;
