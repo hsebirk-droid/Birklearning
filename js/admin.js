@@ -1327,7 +1327,6 @@ function visualizarCertificadoHistorico(historicoId) {
   if (modal) modal.style.display = 'flex';
   window.certificadoAtual = { html: certHtml, nome: registro.nomeDisplay || registro.nome };
 }
-
 function exportarHistoricoExcel() {
   if (!historicos.length) { showToast('❌ Sem dados para exportar'); return; }
   const dados = historicos.map(h => ({
