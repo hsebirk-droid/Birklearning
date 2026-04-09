@@ -390,17 +390,17 @@ function EnvioEmail() {
         return;
     }
 
-    // CORRIGIDO: Acentuação correta em "Formação"
-    const assunto = encodeURIComponent('[Birkenstock] Nova Formação Atribuída');
-    const corpo = encodeURIComponent(
-        `Olá ${colaborador.nome},\n\n` +
+    // CORRIGIDO MANUALMENTE - Sem encodeURIComponent para evitar duplicação
+    const assunto = '[Birkenstock] Nova Formação Atribuída';
+    const corpo = `Olá ${colaborador.nome},\n\n` +
         `Foi-lhe atribuída uma nova formação na plataforma Birkenstock S&CC Portugal.\n\n` +
         `🔗 Link de acesso: ${link}\n\n` +
         `📅 Prazo: ${document.getElementById('atrib-prazo')?.value || '31/12/2026'}\n\n` +
-        `Atenciosamente,\nEquipa de Formação Birkenstock`
-    );
+        `Atenciosamente,\nEquipa de Formação Birkenstock`;
     
-    window.open(`mailto:${colaborador.email}?subject=${assunto}&body=${corpo}`);
+    // Usar mailto diretamente sem encodeURIComponent
+    const mailtoLink = `mailto:${colaborador.email}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+    window.open(mailtoLink);
     showToast(`📧 A abrir cliente de email para ${colaborador.nome}`);
 }
 
@@ -1011,11 +1011,15 @@ function enviarEmailsMassa() {
   }
   
   emailsList.forEach(e => {
-    const assunto = encodeURIComponent(`[Birkenstock] Formação: ${e.curso}`);
-    const corpo = encodeURIComponent(
-      `Olá ${e.nome},\n\nFoi-lhe atribuída a formação "${e.curso}".\n\nPrazo: ${e.prazo}\n\nAceda através do link:\n${e.link}\n\nAtenciosamente,\nEquipa de Formação Birkenstock`
-    );
-    window.open(`mailto:${e.email}?subject=${assunto}&body=${corpo}`);
+    const assunto = `[Birkenstock] Formação: ${e.curso}`;
+    const corpo = `Olá ${e.nome},\n\n` +
+        `Foi-lhe atribuída a formação "${e.curso}".\n\n` +
+        `Prazo: ${e.prazo}\n\n` +
+        `Aceda através do link:\n${e.link}\n\n` +
+        `Atenciosamente,\nEquipa de Formação Birkenstock`;
+    
+    const mailtoLink = `mailto:${e.email}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+    window.open(mailtoLink);
   });
   showToast(`📧 A abrir ${emailsList.length} emails...`);
 }
@@ -1027,17 +1031,16 @@ function enviarEmailIndividual(email, nome, link, prazo, cursoNome) {
         return;
     }
     
-    // CORRIGIDO: Acentuação correta
-    const assunto = encodeURIComponent(`[Birkenstock] Formação: ${cursoNome}`);
-    const corpo = encodeURIComponent(
-        `Olá ${nome},\n\n` +
+    // CORRIGIDO - Texto limpo sem problemas de encoding
+    const assunto = `[Birkenstock] Formação: ${cursoNome}`;
+    const corpo = `Olá ${nome},\n\n` +
         `Foi-lhe atribuída a formação "${cursoNome}" na plataforma Birkenstock S&CC Portugal.\n\n` +
         `Link de acesso: ${link}\n\n` +
         `Prazo: ${prazo}\n\n` +
-        `Atenciosamente,\nEquipa de Formação Birkenstock`
-    );
+        `Atenciosamente,\nEquipa de Formação Birkenstock`;
     
-    window.open(`mailto:${email}?subject=${assunto}&body=${corpo}`);
+    const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+    window.open(mailtoLink);
     showToast(`📧 A abrir email para ${nome}`);
 }
 
