@@ -90,56 +90,54 @@ async function carregarDadosExemplo() {
   }
   
   // Se não houver dados, criar exemplos E GUARDAR NO FIRESTORE
-  // Se não houver dados, criar exemplos E GUARDAR NO FIRESTORE
-if (!formacoes || formacoes.length === 0) {
-  console.log('📝 Criando formações de exemplo...');
-  formacoes = [
-    {
-      id: "1",
-      nome: "Formação Tester",
-      descricao: "Formação de exemplo para testar a plataforma.",
-      duracao: "45 minutos",
-      icone: "💬",
-      modulos: [
-        { 
-          id: "m1", 
-          titulo: "Módulo de Exemplo", 
-          tipo: "video", 
-          conteudo: { url: "https://www.youtube.com/embed/dQw4w9WgXcQ" }, 
-          duracao: "10 min" 
-        }
-      ],
-      perguntas: [
-        { 
-          id: "p1", 
-          texto: "Qual é a primeira impressão no atendimento ao cliente?", 
-          opcoes: ["Olhar nos olhos", "Sorriso", "Postura correta", "Todas as anteriores"], 
-          correta: "D" 
-        }
-      ]
-    }
-  ];
-  await salvarFormacoes();
-}
-
-if (!colaboradores || colaboradores.length === 0) {
-  console.log('📝 Criando colaboradores de exemplo...');
-  colaboradores = [
-    { 
-      id: "c1", 
-      matricula: "000", 
-      user: "tester.formacao", 
-      nome: "Tester Formação", 
-      email: "tester.formacao@birkenstock.pt", 
-      pass: "123456" 
-    }
-  ];
-  await salvarColaboradores();
-}
+  if (!formacoes || formacoes.length === 0) {
+    console.log('📝 Criando formações de exemplo...');
+    formacoes = [
+      {
+        id: "1",
+        nome: "Formação Tester",
+        descricao: "Formação de exemplo para testar a plataforma.",
+        duracao: "45 minutos",
+        icone: "💬",
+        modulos: [
+          { 
+            id: "m1", 
+            titulo: "Módulo de Exemplo", 
+            tipo: "video", 
+            conteudo: { url: "https://www.youtube.com/embed/dQw4w9WgXcQ" }, 
+            duracao: "10 min" 
+          }
+        ],
+        perguntas: [
+          { 
+            id: "p1", 
+            texto: "Qual é a primeira impressão no atendimento ao cliente?", 
+            opcoes: ["Olhar nos olhos", "Sorriso", "Postura correta", "Todas as anteriores"], 
+            correta: "D" 
+          }
+        ]
+      }
+    ];
+    await salvarFormacoes();
+  }
+  
+  if (!colaboradores || colaboradores.length === 0) {
+    console.log('📝 Criando colaboradores de exemplo...');
+    colaboradores = [
+      { 
+        id: "c1", 
+        matricula: "000", 
+        user: "tester.formacao", 
+        nome: "Tester Formação", 
+        email: "tester.formacao@birkenstock.pt", 
+        pass: "123456" 
+      }
+    ];
+    await salvarColaboradores();
+  }
   
   console.log('✅ Dados carregados com sucesso!');
 }
-
 function carregarDoLocalStorage() {
   formacoes = JSON.parse(localStorage.getItem('formacoes') || '[]');
   colaboradores = JSON.parse(localStorage.getItem('colaboradores') || '[]');
@@ -777,7 +775,7 @@ function importColaboradores(files) {
 }
 
 function downloadModeloCSV() {
-  const csv = "matricula,nome,email,password\n000,Teste Teste,teste.teste@email.pt,birkenstock2024";
+  const csv = "matricula,nome,email,password\n000,Tester Formação,tester.formacao@birkenstock.pt,birkenstock2024";
   const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
