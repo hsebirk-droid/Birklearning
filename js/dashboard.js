@@ -53,6 +53,7 @@ async function loadCourses() {
   loadingDiv.style.display = 'block';
   coursesGrid.style.display = 'none';
 
+  // Carregar todas as formações
   if (window.firebaseReady && typeof window.carregarDoFirestore === 'function') {
     const firestoreCourses = await window.carregarDoFirestore('formacoes');
     allCourses = Array.isArray(firestoreCourses) && firestoreCourses.length
@@ -62,12 +63,61 @@ async function loadCourses() {
     allCourses = JSON.parse(localStorage.getItem('formacoes') || '[]');
   }
 
+  // ✅ CORREÇÃO: Filtrar apenas formações ATRIBUÍDAS a este colaborador
+  await filtrarApenasAtribuidas();
+  
   loadUserProgress();
   updateUserStats();
   renderCourses();
 
   loadingDiv.style.display = 'none';
   coursesGrid.style.display = 'grid';
+}
+async function filtrarApenasAtribuidas() {
+  // Identificar o utilizador atual
+  const userIdentifier = currentUser?.user || currentUser?.email || currentUser?.name || '';
+  
+  console.log('🔍 Filtrando formações para:', userIdentifier);
+  
+  // Carregar atribuições
+  let atribuicoesData = [];
+  if (window.firebaseReady && window.db) {
+    try {
+      const snapshot = await window.db.collection('atribuicoes').get();
+      atribuicoesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.warn('⚠️ Erro ao carregar atribuições do Firestore, usando localStorage');
+      atribuicoesData = JSON.parse(localStorage.getItem('atribuicoes') || '[]');
+    }
+  } else {
+    atribuicoesData = JSON.parse(localStorage.getItem('atribuicoes') || '[]');
+  }
+  
+  // Filtrar atribuições deste colaborador
+  const minhasAtribuicoes = atribuicoesData.filter(a => {
+    const userMatch = a.colaboradorUser === userIdentifier;
+    const emailMatch = a.colaboradorEmail?.toLowerCase() === userIdentifier?.toLowerCase();
+    const nomeMatch = a.colaboradorNome === userIdentifier;
+    return userMatch || emailMatch || nomeMatch;
+  });
+  
+  console.log('📋 Atribuições encontradas:', minhasAtribuicoes.length);
+  
+  if (minhasAtribuicoes.length === 0) {
+    // Se não tem atribuições, não vê nenhuma formação
+    allCourses = [];
+    console.log('ℹ️ Nenhuma formação atribuída a este colaborador');
+    return;
+  }
+  
+  // Extrair IDs das formações atribuídas
+  const cursosAtribuidosIds = [...new Set(minhasAtribuicoes.map(a => a.cursoId))];
+  
+  // Filtrar apenas as formações atribuídas
+  allCourses = allCourses.filter(curso => cursosAtribuidosIds.includes(curso.id));
+  
+  console.log('✅ Formações atribuídas:', allCourses.length);
+  console.log('📚 IDs atribuídos:', cursosAtribuidosIds);
 }
 
 function loadUserProgress() {
