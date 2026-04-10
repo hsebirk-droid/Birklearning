@@ -183,18 +183,36 @@ function getColaboradoresList() { return colaboradores; }
 function getFormacoesList() { return formacoes; }
 
 // ==================== DASHBOARD ====================
+// ==================== DASHBOARD ====================
 function atualizarDashboard() {
   const totalFormacoes = formacoes.length;
   const totalColaboradores = colaboradores.length;
   const totalAtribuicoes = atribuicoes.length;
-  const pendentes = atribuicoes.filter(a => a.status !== 'concluido').length;
+  
+  // ✅ CORREÇÃO: Contar corretamente as concluídas (aceita variações de status)
+  const concluidas = atribuicoes.filter(a => 
+    a.status === 'concluido' || 
+    a.status === 'concluída' || 
+    a.status === 'Concluido' ||
+    a.status === 'Concluído'
+  ).length;
+  
+  const pendentes = totalAtribuicoes - concluidas;
+  
+  console.log('📊 Dashboard atualizado:', {
+    formacoes: totalFormacoes,
+    colaboradores: totalColaboradores,
+    atribuicoes: totalAtribuicoes,
+    concluidas: concluidas,
+    pendentes: pendentes
+  });
   
   const dashboardGrid = document.getElementById('dashboard-grid');
   if (dashboardGrid) {
     dashboardGrid.innerHTML = `
       <div class="dash-card"><div class="dash-icon" style="background:var(--info-bg)">📚</div><div class="dash-info"><h3>${totalFormacoes}</h3><p>Formações</p></div></div>
       <div class="dash-card"><div class="dash-icon" style="background:var(--success-bg)">👥</div><div class="dash-info"><h3>${totalColaboradores}</h3><p>Colaboradores</p></div></div>
-      <div class="dash-card"><div class="dash-icon" style="background:var(--purple-bg)">🏅</div><div class="dash-info"><h3>${totalAtribuicoes - pendentes}</h3><p>Atribuições concluídas</p></div></div>
+      <div class="dash-card"><div class="dash-icon" style="background:var(--purple-bg)">🏅</div><div class="dash-info"><h3>${concluidas}</h3><p>Atribuições concluídas</p></div></div>
       <div class="dash-card"><div class="dash-icon" style="background:var(--warning-bg)">⏳</div><div class="dash-info"><h3>${pendentes}</h3><p>Pendentes</p></div></div>
     `;
   }
