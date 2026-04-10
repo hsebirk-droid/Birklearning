@@ -1,5 +1,5 @@
 // ============================================
-// FORMAÇÃO - LÓGICA PRINCIPAL (VERSÃO CORRIGIDA)
+// FORMAÇÃO - LÓGICA PRINCIPAL (VERSÃO COMPLETA CORRIGIDA)
 // ============================================
 
 let modules = [];
@@ -43,7 +43,6 @@ async function initFormacao() {
     
     document.getElementById('user-name-display').textContent = nomeUserDisplay;
     
-    // ✅ CORRIGIDO: Mostrar prazo corretamente
     if (tokenData.prazo) {
       document.getElementById('prazo-data').textContent = tokenData.prazo;
     }
@@ -171,14 +170,12 @@ async function carregarFormacao(id) {
     perguntas = data.perguntas || [];
     totalPerguntas = perguntas.length;
     
-    // ✅ CORRIGIDO: Carregar prazo da atribuição
     await carregarPrazoAtribuicao();
     
     carregarProgresso();
     
     document.getElementById('hero-title').textContent = cursoData.nome;
     
-    // ✅ CORRIGIDO: Mostrar conteúdo programático como lista
     const conteudoProgramatico = cursoData.conteudoProgramatico || '';
     const linhas = conteudoProgramatico.split('\n').filter(l => l.trim() !== '');
     let conteudoHtml = '';
@@ -202,7 +199,6 @@ async function carregarFormacao(id) {
   }
 }
 
-// ✅ NOVA FUNÇÃO: Carregar prazo da atribuição
 async function carregarPrazoAtribuicao() {
   const atribuicoes = JSON.parse(localStorage.getItem('atribuicoes') || '[]');
   atribuicaoAtual = atribuicoes.find(a => 
@@ -318,34 +314,19 @@ function carregarConteudoModulo(module, moduleIdStr) {
   const btn = document.getElementById(`btn-confirm-${moduleIdStr}`);
   
   if (module.tipo === 'texto') {
-    // ✅ Texto: só habilita após scroll até ao fim
     setTimeout(() => window.detectarScrollCompleto(`scrollable-${moduleIdStr}`, () => {
       if (btn) btn.disabled = false;
       window.showToast('✅ Conteúdo visualizado! Pode confirmar a conclusão.');
     }), 100);
   } else if (module.tipo === 'video') {
-    // ✅ Vídeo: só habilita após assistir até ao fim
-    const videoIframe = document.getElementById(`video-${moduleIdStr}`);
-    if (videoIframe) {
-      // Para YouTube, usamos a API para detetar quando termina
-      const videoUrl = module.conteudo?.url || '';
-      if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
-        // YouTube - vamos usar um timer como fallback, mas o ideal seria a API
-        setTimeout(() => {
-          window.showToast('ℹ️ Assista o vídeo até ao fim para confirmar.');
-        }, 1000);
-      } else {
-        // Outros vídeos - habilitar após um tempo proporcional
-        setTimeout(() => {
-          if (btn) btn.disabled = false;
-        }, 60000); // 1 minuto como fallback
-      }
-    }
-  } else {
-    // Link/Documento - habilitar após alguns segundos
     setTimeout(() => {
       if (btn) btn.disabled = false;
+      window.showToast('✅ Pode confirmar a conclusão do módulo.');
     }, 5000);
+  } else {
+    setTimeout(() => {
+      if (btn) btn.disabled = false;
+    }, 3000);
   }
   
   if (btn && !btn.dataset.listener) {
@@ -354,10 +335,54 @@ function carregarConteudoModulo(module, moduleIdStr) {
   }
 }
 
-// ✅ NOVA FUNÇÃO: Chamada quando o vídeo do YouTube termina
-window.onYouTubeIframeAPIReady = function() {
-  console.log('YouTube API pronta');
-};
+function renderQuiz() {
+  const container = document.getElementById('modules-container');
+  if (!container) return;
+  
+  const allModulesCompleted = modules.every(m => completedModules[String(m.id)]);
+  const quizBlock = document.createElement('div');
+  quizBlock.className = `section-block ${!allModulesCompleted && !quizPassed ? 'locked' : ''}`;
+  quizBlock.id = 'block-quiz';
+  quizBlock.innerHTML = `
+    <div class="section-header" onclick="window.toggleSection('quiz')">
+      <div class="s-num">📝</div><div class="s-info"><div class="s-title">Avaliação Final</div><div class="s-meta">Nota mínima: 70%</div></div>
+      <div id="status-quiz">${quizPassed ? '✅' : (allModulesCompleted ? '📝' : '🔒')}</div>
+    </div>
+    <div class="section-body" id="body-quiz">
+      <div id="quiz-questions"></div>
+      <div class="quiz-footer"><span id="quiz-answered">0 respondidas</span><button class="btn-submit" id="btn-submit" disabled>Submeter</button></div>
+      <div class="result-screen" id="result-screen" style="display:none;"><div class="result-score-ring" id="result-ring"><div class="score-num" id="score-num">0%</div></div><h2 id="result-title"></h2><p id="result-msg"></p><div class="result-actions" id="result-actions"></div></div>
+    </div>
+  `;
+  container.appendChild(quizBlock);
+  
+  if (quizPassed) {
+    document.getElementById('quiz-questions').style.display = 'none';
+    document.querySelector('.quiz-footer').style.display = 'none';
+    document.getElementById('result-screen').style.display = 'block';
+    mostrarResultadoQuiz(true);
+    return;
+  }
+  
+  const questionsDiv = document.getElementById('quiz-questions');
+  questionsDiv.innerHTML = perguntas.map((q, idx) => `
+    <div class="question"><div class="question-text">${window.escapeHtml(q.texto)}</div>
+    <div class="options" id="opts-${idx}">${q.opcoes.map((opt, i) => `<div class="option-item ${respostas[idx]===String.fromCharCode(65+i)?'selected':''}" data-optidx="${i}"><div class="option-letter">${String.fromCharCode(65+i)}</div>${window.escapeHtml(opt)}</div>`).join('')}</div></div>
+  `).join('');
+  
+  perguntas.forEach((_, idx) => {
+    document.querySelectorAll(`#opts-${idx} .option-item`).forEach(opt => {
+      opt.onclick = () => window.selectOpt(idx, parseInt(opt.dataset.optidx));
+    });
+  });
+  
+  atualizarContadorRespondidas();
+  document.getElementById('btn-submit').onclick = () => window.submitQuiz();
+}
+
+function mostrarResultadoQuiz(passed) {
+  // Já tratado no submitQuiz
+}
 
 // ==================== INTERAÇÕES ====================
 window.toggleSection = function(id) {
@@ -404,6 +429,183 @@ window.confirmModule = function(moduleId) {
   }
 };
 
+window.selectOpt = function(qIdx, optIdx) {
+  const opts = document.querySelectorAll(`#opts-${qIdx} .option-item`);
+  opts.forEach(o => o.classList.remove('selected'));
+  opts[optIdx].classList.add('selected');
+  respostas[qIdx] = String.fromCharCode(65 + optIdx);
+  atualizarContadorRespondidas();
+  salvarProgresso();
+};
+
+function atualizarContadorRespondidas() {
+  const answered = Object.keys(respostas).length;
+  document.getElementById('quiz-answered').textContent = `${answered} de ${totalPerguntas} respondidas`;
+  document.getElementById('btn-submit').disabled = answered < totalPerguntas;
+}
+
+window.submitQuiz = function() {
+  let score = 0;
+  for (let i = 0; i < totalPerguntas; i++) if (respostas[i] === perguntas[i].correta) score++;
+  const pct = Math.round((score / totalPerguntas) * 100);
+  const passed = pct >= 70;
+  
+  quizPassed = passed;
+  salvarProgresso(); updateProgress();
+  
+  document.getElementById('quiz-questions').style.display = 'none';
+  document.querySelector('.quiz-footer').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'block';
+  document.getElementById('status-quiz').innerHTML = passed ? '✅' : '❌';
+  
+  document.getElementById('score-num').textContent = pct + '%';
+  const actions = document.getElementById('result-actions');
+  actions.innerHTML = '';
+  
+  if (passed) {
+    document.getElementById('result-title').innerHTML = '🎉 Parabéns!';
+    document.getElementById('result-msg').innerHTML = `Acertaste ${score} de ${totalPerguntas}. Aprovado!`;
+    document.getElementById('result-ring').classList.remove('fail');
+    const certBtn = document.createElement('button');
+    certBtn.className = 'result-btn result-btn-cert';
+    certBtn.innerHTML = '🎓 Ver Certificado';
+    certBtn.onclick = () => window.showCertificate(pct);
+    actions.appendChild(certBtn);
+    registrarConclusao(pct);
+    window.showToast('🏆 Formação concluída!');
+  } else {
+    document.getElementById('result-title').innerHTML = '❌ Não aprovado';
+    document.getElementById('result-msg').innerHTML = `${pct}% (${score}/${totalPerguntas}). Precisas de 70%.`;
+    document.getElementById('result-ring').classList.add('fail');
+    const retryBtn = document.createElement('button');
+    retryBtn.className = 'result-btn result-btn-retry';
+    retryBtn.innerHTML = '🔄 Tentar novamente';
+    retryBtn.onclick = () => window.retryQuiz();
+    actions.appendChild(retryBtn);
+    window.showToast('⚠️ Tente novamente!');
+  }
+  
+  const backBtn = document.createElement('button');
+  backBtn.className = 'result-btn';
+  backBtn.style.background = 'var(--birkenstock-gray)';
+  backBtn.innerHTML = '← Dashboard';
+  backBtn.onclick = () => window.location.href = 'dashboard.html';
+  actions.appendChild(backBtn);
+};
+
+async function registrarConclusao(nota) {
+  const userId = window.auth?.currentUser?.uid || nomeUser;
+  
+  const novoHistorico = { 
+    id: Date.now().toString(), 
+    nome: nomeUser, 
+    nomeDisplay: nomeUserDisplay, 
+    email: userEmail,
+    userId: userId,
+    curso: cursoData.nome, 
+    cursoId, 
+    nota: nota + '%', 
+    data: window.formatDate(new Date()), 
+    dataTimestamp: Date.now(), 
+    certificadoId: window.gerarCertificadoId() 
+  };
+  
+  const historicos = JSON.parse(localStorage.getItem('historicos') || '[]');
+  historicos.push(novoHistorico);
+  localStorage.setItem('historicos', JSON.stringify(historicos));
+  
+  const atribuicoes = JSON.parse(localStorage.getItem('atribuicoes') || '[]');
+  const idx = atribuicoes.findIndex(a => a.colaboradorUser === nomeUser && a.cursoId === cursoId && a.status !== 'concluido');
+  if (idx !== -1) { 
+    atribuicoes[idx].status = 'concluido'; 
+    atribuicoes[idx].dataConclusao = new Date().toISOString(); 
+    atribuicoes[idx].nota = nota + '%'; 
+  }
+  localStorage.setItem('atribuicoes', JSON.stringify(atribuicoes));
+  localStorage.setItem('cursoConcluido', cursoId);
+  
+  if (window.firebaseReady && window.db) {
+    try {
+      await window.db.collection('historicos').doc(novoHistorico.id).set(novoHistorico);
+      if (idx !== -1) {
+        await window.db.collection('atribuicoes').doc(atribuicoes[idx].id).set(atribuicoes[idx], { merge: true });
+      }
+    } catch (error) {
+      console.error('❌ Erro ao guardar no Firestore:', error);
+    }
+  }
+}
+
+window.retryQuiz = function() {
+  respostas = {};
+  for (let i = 0; i < totalPerguntas; i++) document.querySelectorAll(`#opts-${i} .option-item`).forEach(o => o.classList.remove('selected'));
+  document.getElementById('quiz-questions').style.display = 'block';
+  document.querySelector('.quiz-footer').style.display = 'flex';
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('btn-submit').disabled = true;
+  atualizarContadorRespondidas();
+  window.showToast('🔄 Quiz reiniciado!');
+};
+
+// ==================== CERTIFICADO ====================
+window.showCertificate = function(nota) {
+  const certId = window.gerarCertificadoId();
+  let fundoImagem = 'assets/fundo_certificado.png';
+  try { const t = JSON.parse(localStorage.getItem('cert_template')); if (t?.fundoImagem) fundoImagem = t.fundoImagem; } catch(e) {}
+  
+  const certHtml = `
+    <div class="cert-screen" id="cert-screen">
+      <div id="certificado-para-pdf" style="background-image:url('${fundoImagem}');background-size:cover;width:100%;max-width:210mm;aspect-ratio:210/297;">
+        <div style="height:100%;display:flex;flex-direction:column;justify-content:center;padding:40px;text-align:center;">
+          <div style="font-family:'Fraunces',serif;font-size:2.2rem;font-weight:900;color:#00338D;margin-bottom:20px;">${window.escapeHtml(nomeUserDisplay)}</div>
+          <div style="font-size:1.2rem;color:#616365;margin-bottom:20px;">concluiu com sucesso a formação</div>
+          <div style="font-family:'Fraunces',serif;font-size:1.5rem;font-weight:700;color:#C5A059;margin-bottom:50px;">${window.escapeHtml(cursoData.nome)}</div>
+          <div style="display:flex;justify-content:center;gap:60px;flex-wrap:wrap;">
+            <div><div>NOTA FINAL</div><div style="font-size:1.5rem;font-weight:700;color:#00338D;">${typeof nota==='number'?nota+'%':nota}</div></div>
+            <div><div>DATA</div><div style="font-size:1rem;color:#00338D;">${window.formatDate(new Date())}</div></div>
+            <div><div>CERTIFICADO ID</div><div style="font-family:monospace;color:#00338D;">${certId}</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="cert-actions">
+        <button class="action-btn action-btn-download" id="btn-descarregar-pdf">📄 Descarregar PDF</button>
+        <button class="action-btn" id="btn-imprimir-certificado">🖨️ Imprimir</button>
+        <button class="action-btn" onclick="window.location.href='login.html'">🏠 Sair</button>
+      </div>
+    </div>
+  `;
+  
+  document.getElementById('cert-screen')?.remove();
+  document.getElementById('modules-container')?.insertAdjacentHTML('beforeend', certHtml);
+  document.getElementById('btn-descarregar-pdf').onclick = () => window.descarregarPDF();
+  document.getElementById('btn-imprimir-certificado').onclick = () => window.imprimirCertificado();
+  document.getElementById('cert-screen')?.scrollIntoView({ behavior: 'smooth' });
+};
+
+window.descarregarPDF = async function() {
+  const el = document.getElementById('certificado-para-pdf');
+  if (!el || typeof html2canvas === 'undefined') return;
+  window.showToast('📄 A gerar PDF...');
+  try {
+    const canvas = await html2canvas(el, { scale: 3, useCORS: true });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const w = pdf.internal.pageSize.getWidth();
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, w, (canvas.height * w) / canvas.width);
+    pdf.save(`certificado_${nomeUserDisplay.replace(/\s/g,'_')}.pdf`);
+    window.showToast('✅ PDF guardado!');
+  } catch(e) { window.showToast('❌ Erro ao gerar PDF'); }
+};
+
+window.imprimirCertificado = async function() {
+  const el = document.getElementById('certificado-para-pdf');
+  if (!el || typeof html2canvas === 'undefined') return;
+  const canvas = await html2canvas(el, { scale: 3, useCORS: true });
+  const win = window.open('', '_blank');
+  win.document.write(`<html><body style="margin:0;"><img src="${canvas.toDataURL('image/png')}" style="width:100%;"></body><script>window.onload=function(){window.print();setTimeout(window.close,1000);}<\/script>`);
+  win.document.close();
+};
+
 // ==================== BOTÃO SAIR ====================
 document.getElementById('btn-sair')?.addEventListener('click', () => {
   if (confirm('Sair? O progresso será guardado.')) {
@@ -411,8 +613,5 @@ document.getElementById('btn-sair')?.addEventListener('click', () => {
   }
 });
 
-// ... (resto do código mantém-se igual: renderQuiz, selectOpt, submitQuiz, registrarConclusao, etc.)
-// Incluir todas as outras funções existentes (renderQuiz, selectOpt, submitQuiz, registrarConclusao, retryQuiz, showCertificate, descarregarPDF, imprimirCertificado, etc.)
-
 document.addEventListener('DOMContentLoaded', initFormacao);
-console.log("✅ formacao.js carregado - versão corrigida");
+console.log("✅ formacao.js carregado - versão completa corrigida");
