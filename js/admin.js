@@ -236,11 +236,21 @@ function prepararAtribuicao() {
     const forms = formacoes;
     const selColab = document.getElementById('select-colaborador');
     const selForm = document.getElementById('select-formacao');
+    
+    // ✅ Ordenar colaboradores por matrícula
+    const colabsOrdenados = [...colabs].sort((a, b) => {
+      const matA = parseInt(a.matricula) || 999999;
+      const matB = parseInt(b.matricula) || 999999;
+      return matA - matB;
+    });
+    
     if (selColab) {
-        selColab.innerHTML = '<option value="">Selecione um colaborador...</option>' + colabs.map(c => `<option value="${c.id}" data-nome="${escapeHtml(c.nome)}" data-email="${escapeHtml(c.email || '')}" data-matricula="${escapeHtml(c.matricula || '')}">${escapeHtml(c.nome)} (${c.matricula || c.user})</option>`).join('');
+        selColab.innerHTML = '<option value="">Selecione um colaborador...</option>' + 
+          colabsOrdenados.map(c => `<option value="${c.id}" data-nome="${escapeHtml(c.nome)}" data-email="${escapeHtml(c.email || '')}" data-matricula="${escapeHtml(c.matricula || '')}">${escapeHtml(c.nome)} (${c.matricula || c.user})</option>`).join('');
     }
     if (selForm) {
-        selForm.innerHTML = '<option value="">Selecione uma formação...</option>' + forms.map(f => `<option value="${f.id}">${escapeHtml(f.nome)}</option>`).join('');
+        selForm.innerHTML = '<option value="">Selecione uma formação...</option>' + 
+          forms.map(f => `<option value="${f.id}">${escapeHtml(f.nome)}</option>`).join('');
     }
 }
 
@@ -550,18 +560,40 @@ function renderPerguntas() {
 function renderColabs() {
   const tbody = document.getElementById('colab-list-table');
   if (!tbody) return;
-  if (!colaboradores.length) { tbody.innerHTML = '<tr><td colspan="4" class="empty">Nenhum colaborador cadastrado.</td></tr>'; return; }
-  tbody.innerHTML = colaboradores.map(c => `
-    <tr><td>${escapeHtml(c.matricula || '-')}</td><td>${escapeHtml(c.nome || c.user)}</td><td>${escapeHtml(c.email || '-')}</td><td><button class="btn-remover-colab" data-id="${c.id}">🗑️ Remover</button></td></tr>
+  if (!colaboradores.length) { 
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">Nenhum colaborador cadastrado.</td></tr>'; 
+    return; 
+  }
+  
+  // ✅ Ordenar por matrícula (convertendo para número)
+  const colaboradoresOrdenados = [...colaboradores].sort((a, b) => {
+    const matA = parseInt(a.matricula) || 999999;
+    const matB = parseInt(b.matricula) || 999999;
+    return matA - matB;
+  });
+  
+  tbody.innerHTML = colaboradoresOrdenados.map(c => `
+    <tr>
+      <td>${escapeHtml(c.matricula || '-')}</td>
+      <td>${escapeHtml(c.nome || c.user)}</td>
+      <td>${escapeHtml(c.email || '-')}</td>
+      <td><button class="btn-remover-colab" data-id="${c.id}">🗑️ Remover</button></td>
+    </tr>
   `).join('');
-  document.querySelectorAll('.btn-remover-colab').forEach(btn => btn.addEventListener('click', () => removerColab(btn.dataset.id)));
+  
+  document.querySelectorAll('.btn-remover-colab').forEach(btn => 
+    btn.addEventListener('click', () => removerColab(btn.dataset.id))
+  );
 }
-
 function removerColab(id) {
-  if (confirm('Remover colaborador?')) {
+  if (confirm('Remover este colaborador? Esta ação não pode ser desfeita.')) {
     colaboradores = colaboradores.filter(c => c.id !== id);
-    salvarColaboradores(); renderColabs(); atualizarSelectores(); atualizarDashboard(); renderAcompanhamento();
-    showToast('✅ Colaborador removido!');
+    salvarColaboradores();
+    renderColabs();
+    atualizarSelectores();
+    atualizarDashboard();
+    renderAcompanhamento();
+    showToast('✅ Colaborador removido com sucesso!');
   }
 }
 
@@ -630,12 +662,23 @@ function atualizarSelectores() {
   const atribuirCurso = document.getElementById('atribuir-curso');
   const colabGrid = document.getElementById('colab-selector-grid');
   const valorSelecionado = atribuirCurso ? atribuirCurso.value : '';
+  
   if (atribuirCurso) {
-    atribuirCurso.innerHTML = '<option value="">Selecione uma formação</option>' + formacoes.map(c => `<option value="${c.id}" ${valorSelecionado===c.id?'selected':''}>${escapeHtml(c.nome)}</option>`).join('');
+    atribuirCurso.innerHTML = '<option value="">Selecione uma formação</option>' + 
+      formacoes.map(c => `<option value="${c.id}" ${valorSelecionado===c.id?'selected':''}>${escapeHtml(c.nome)}</option>`).join('');
   }
+  
   if (colabGrid) {
     const cursoSelecionado = atribuirCurso?.value || '';
-    colabGrid.innerHTML = colaboradores.map(c => {
+    
+    // ✅ CORREÇÃO: Ordenar colaboradores por matrícula (do menor para o maior)
+    const colaboradoresOrdenados = [...colaboradores].sort((a, b) => {
+      const matA = parseInt(a.matricula) || 999999;
+      const matB = parseInt(b.matricula) || 999999;
+      return matA - matB;
+    });
+    
+    colabGrid.innerHTML = colaboradoresOrdenados.map(c => {
       const jaConcluiu = historicos.some(h => (h.nome === c.user || h.nomeDisplay === c.nome) && h.cursoId === cursoSelecionado);
       const jaAtribuido = atribuicoes.some(a => a.colaboradorUser === c.user && a.cursoId === cursoSelecionado && a.status !== 'concluido');
       let statusHtml = '';
@@ -644,9 +687,11 @@ function atualizarSelectores() {
       return `<label class="colab-check"><input type="checkbox" value="${c.id}" ${jaConcluiu?'disabled':''}> ${escapeHtml(c.nome)} (${c.matricula || c.user}) ${statusHtml}</label>`;
     }).join('');
   }
+  
   const filtroFormacao = document.getElementById('filtro-formacao-acompanhar');
   if (filtroFormacao) {
-    filtroFormacao.innerHTML = '<option value="">Todas formações</option>' + formacoes.map(f => `<option value="${f.id}">${escapeHtml(f.nome)}</option>`).join('');
+    filtroFormacao.innerHTML = '<option value="">Todas formações</option>' + 
+      formacoes.map(f => `<option value="${f.id}">${escapeHtml(f.nome)}</option>`).join('');
   }
 }
 
