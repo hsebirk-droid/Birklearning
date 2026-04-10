@@ -48,10 +48,14 @@ function gerarTokenSeguro(dados) {
 }
 
 // ==================== DADOS (FIRESTORE PRIMEIRO) ====================
+// ==================== DADOS (FIRESTORE PRIMEIRO) ====================
 async function carregarDadosExemplo() {
   console.log('📦 A carregar dados...');
   
-  if (window.firebaseReady && window.db) {
+  // ✅ Só tenta Firestore se estiver autenticado
+  const isAuthenticated = window.auth?.currentUser || localStorage.getItem('usuarioAdmin');
+  
+  if (window.firebaseReady && window.db && isAuthenticated) {
     try {
       console.log('☁️ A carregar do Firestore...');
       const snapshotFormacoes = await window.db.collection('formacoes').get();
@@ -75,14 +79,15 @@ async function carregarDadosExemplo() {
       localStorage.setItem('atribuicoes', JSON.stringify(atribuicoes));
       localStorage.setItem('historicos', JSON.stringify(historicos));
     } catch (error) {
-      console.error('❌ Erro ao carregar do Firestore:', error);
+      console.warn('⚠️ Erro ao carregar do Firestore, usando localStorage:', error.message);
       carregarDoLocalStorage();
     }
   } else {
-    console.warn('⚠️ Firestore indisponível, usando localStorage');
+    console.log('📦 Usando localStorage (não autenticado ou offline)');
     carregarDoLocalStorage();
   }
   
+  // Criar dados de exemplo se necessário
   if (!formacoes || formacoes.length === 0) {
     console.log('📝 Criando formações de exemplo...');
     formacoes = [
@@ -113,7 +118,6 @@ async function carregarDadosExemplo() {
   
   console.log('✅ Dados carregados com sucesso!');
 }
-
 function carregarDoLocalStorage() {
   formacoes = JSON.parse(localStorage.getItem('formacoes') || '[]');
   colaboradores = JSON.parse(localStorage.getItem('colaboradores') || '[]');
@@ -1083,13 +1087,26 @@ function setupEventListeners() {
 }
 
 function initAdmin() {
-  if (!localStorage.getItem('usuarioAdmin')) { window.location.href = 'login.html'; return; }
-  carregarDadosExemplo();
-  setupEventListeners();
-  renderModulos(); renderPerguntas(); renderColabs(); renderHistorico();
-  atualizarSelectores(); atualizarDashboard(); renderFormacoesLista();
-  carregarTemplateCertificado(); renderAcompanhamento();
-  setTimeout(() => atualizarSelectores(), 500);
+  // ✅ Verificar autenticação ANTES de carregar dados
+  if (!localStorage.getItem('usuarioAdmin')) { 
+    window.location.href = 'login.html'; 
+    return; 
+  }
+  
+  // ✅ Só carrega dados do Firestore DEPOIS de confirmar autenticação
+  carregarDadosExemplo().then(() => {
+    setupEventListeners();
+    renderModulos(); 
+    renderPerguntas(); 
+    renderColabs(); 
+    renderHistorico();
+    atualizarSelectores(); 
+    atualizarDashboard(); 
+    renderFormacoesLista();
+    carregarTemplateCertificado(); 
+    renderAcompanhamento();
+    setTimeout(() => atualizarSelectores(), 500);
+  });
 }
 
 function logout() {
