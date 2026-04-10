@@ -446,11 +446,15 @@ window.submitQuiz = function() {
 };
 
 async function registrarConclusao(nota) {
+  // ✅ CORREÇÃO: Obter o ID do utilizador autenticado (Firebase) ou usar fallback
+  const userId = window.auth?.currentUser?.uid || nomeUser;
+  
   const novoHistorico = { 
     id: Date.now().toString(), 
     nome: nomeUser, 
     nomeDisplay: nomeUserDisplay, 
-    email: userEmail, 
+    email: userEmail,
+    userId: userId, // ✅ ADICIONADO - Identificador único para regras de segurança
     curso: cursoData.nome, 
     cursoId, 
     nota: nota + '%', 
@@ -490,7 +494,6 @@ async function registrarConclusao(nota) {
     }
   }
 }
-
 window.retryQuiz = function() {
   respostas = {};
   for (let i = 0; i < totalPerguntas; i++) document.querySelectorAll(`#opts-${i} .option-item`).forEach(o => o.classList.remove('selected'));
