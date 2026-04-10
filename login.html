@@ -403,10 +403,13 @@
     }
 
     function formatMatricula(value) {
-      let numbers = value.replace(/\D/g, '');
-      if (numbers.length > 4) numbers = numbers.slice(0, 4);
-      return numbers.padStart(4, '0');
-    }
+  // Remove tudo que não for número
+  let numbers = value.replace(/\D/g, '');
+  // Limita a 4 dígitos
+  if (numbers.length > 4) numbers = numbers.slice(0, 4);
+  // Retorna apenas os números, SEM padStart enquanto digita
+  return numbers;
+}
 
     if (forgotPasswordLink) {
       forgotPasswordLink.addEventListener('click', (e) => {
@@ -462,44 +465,67 @@
     }
 
     if (recoveryMatricula) {
-      recoveryMatricula.addEventListener('input', (e) => {
-        const formatted = formatMatricula(e.target.value);
-        e.target.value = formatted;
-      });
+  recoveryMatricula.addEventListener('input', (e) => {
+    // Apenas filtra números, sem forçar 4 dígitos enquanto digita
+    let numbers = e.target.value.replace(/\D/g, '');
+    if (numbers.length > 4) numbers = numbers.slice(0, 4);
+    e.target.value = numbers;
+  });
+  
+  // Quando o campo perde o foco, formata para 4 dígitos com zeros à esquerda
+  recoveryMatricula.addEventListener('blur', (e) => {
+    let numbers = e.target.value.replace(/\D/g, '');
+    if (numbers.length > 0 && numbers.length < 4) {
+      e.target.value = numbers.padStart(4, '0');
+    } else if (numbers.length === 0) {
+      e.target.value = '';
     }
+  });
+}
 
     if (btnVerifyMatricula) {
-      btnVerifyMatricula.addEventListener('click', async () => {
-        const matricula = recoveryMatricula.value.trim();
-        
-        if (!matricula || matricula.length !== 4) {
-          msg2.innerHTML = '❌ Por favor, insira 4 dígitos numéricos.';
-          msg2.className = 'error';
-          return;
-        }
-        
-        btnVerifyMatricula.disabled = true;
-        btnVerifyMatricula.innerHTML = '<i class="fas fa-spinner fa-spin"></i> A verificar...';
-        
-        const result = await window.verifyMatriculaForRecovery(currentRecoveryEmail, matricula);
-        
-        if (result.success) {
-          msg2.innerHTML = '';
-          msg2.className = '';
-          
-          step2.style.display = 'none';
-          step3.style.display = 'block';
-          stepTitle.innerHTML = '<i class="fas fa-lock"></i> Nova Password';
-          recoveryNewPassword.focus();
-        } else {
-          msg2.innerHTML = `❌ ${result.message}`;
-          msg2.className = 'error';
-        }
-        
-        btnVerifyMatricula.disabled = false;
-        btnVerifyMatricula.innerHTML = '<i class="fas fa-arrow-right"></i> Verificar Matrícula';
-      });
+  btnVerifyMatricula.addEventListener('click', async () => {
+    let matricula = recoveryMatricula.value.trim();
+    
+    // Se tiver menos de 4 dígitos, completa com zeros à esquerda
+    if (matricula.length > 0 && matricula.length < 4) {
+      matricula = matricula.padStart(4, '0');
     }
+    
+    if (!matricula || matricula.length !== 4) {
+      msg2.innerHTML = '❌ Por favor, insira 4 dígitos numéricos.';
+      msg2.className = 'error';
+      return;
+    }
+    
+    if (!/^\d{4}$/.test(matricula)) {
+      msg2.innerHTML = '❌ A matrícula deve conter apenas números.';
+      msg2.className = 'error';
+      return;
+    }
+    
+    btnVerifyMatricula.disabled = true;
+    btnVerifyMatricula.innerHTML = '<i class="fas fa-spinner fa-spin"></i> A verificar...';
+    
+    const result = await window.verifyMatriculaForRecovery(currentRecoveryEmail, matricula);
+    
+    if (result.success) {
+      msg2.innerHTML = '';
+      msg2.className = '';
+      
+      step2.style.display = 'none';
+      step3.style.display = 'block';
+      stepTitle.innerHTML = '<i class="fas fa-lock"></i> Nova Password';
+      recoveryNewPassword.focus();
+    } else {
+      msg2.innerHTML = `❌ ${result.message}`;
+      msg2.className = 'error';
+    }
+    
+    btnVerifyMatricula.disabled = false;
+    btnVerifyMatricula.innerHTML = '<i class="fas fa-arrow-right"></i> Verificar Matrícula';
+  });
+}
 
     if (recoveryNewPassword) {
       recoveryNewPassword.addEventListener('input', () => {
