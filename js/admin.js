@@ -1,5 +1,5 @@
 // ============================================
-// ADMIN - LÓGICA PRINCIPAL (VERSÃO CORRIGIDA)
+// ADMIN - LÓGICA PRINCIPAL (VERSÃO COMPLETA COM DETEÇÃO DE PDF)
 // ============================================
 
 let formacoes = [];
@@ -48,11 +48,9 @@ function gerarTokenSeguro(dados) {
 }
 
 // ==================== DADOS (FIRESTORE PRIMEIRO) ====================
-// ==================== DADOS (FIRESTORE PRIMEIRO) ====================
 async function carregarDadosExemplo() {
   console.log('📦 A carregar dados...');
   
-  // ✅ Só tenta Firestore se estiver autenticado
   const isAuthenticated = window.auth?.currentUser || localStorage.getItem('usuarioAdmin');
   
   if (window.firebaseReady && window.db && isAuthenticated) {
@@ -87,7 +85,6 @@ async function carregarDadosExemplo() {
     carregarDoLocalStorage();
   }
   
-  // Criar dados de exemplo se necessário
   if (!formacoes || formacoes.length === 0) {
     console.log('📝 Criando formações de exemplo...');
     formacoes = [
@@ -118,6 +115,7 @@ async function carregarDadosExemplo() {
   
   console.log('✅ Dados carregados com sucesso!');
 }
+
 function carregarDoLocalStorage() {
   formacoes = JSON.parse(localStorage.getItem('formacoes') || '[]');
   colaboradores = JSON.parse(localStorage.getItem('colaboradores') || '[]');
@@ -187,13 +185,11 @@ function getColaboradoresList() { return colaboradores; }
 function getFormacoesList() { return formacoes; }
 
 // ==================== DASHBOARD ====================
-// ==================== DASHBOARD ====================
 function atualizarDashboard() {
   const totalFormacoes = formacoes.length;
   const totalColaboradores = colaboradores.length;
   const totalAtribuicoes = atribuicoes.length;
   
-  // ✅ CORREÇÃO: Contar corretamente as concluídas (aceita variações de status)
   const concluidas = atribuicoes.filter(a => 
     a.status === 'concluido' || 
     a.status === 'concluída' || 
@@ -237,7 +233,6 @@ function prepararAtribuicao() {
     const selColab = document.getElementById('select-colaborador');
     const selForm = document.getElementById('select-formacao');
     
-    // ✅ Ordenar colaboradores por matrícula
     const colabsOrdenados = [...colabs].sort((a, b) => {
       const matA = parseInt(a.matricula) || 999999;
       const matB = parseInt(b.matricula) || 999999;
@@ -266,10 +261,8 @@ function gerarCodigoAtribuicao() {
     const formacao = formacoes.find(f => f.id === cursoId);
     if (!colaborador || !formacao) { showToast('❌ Dados não encontrados'); return; }
     
-    // Criar ID único CURTO
     const tokenId = Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
     
-    // Guardar dados completos no localStorage/Firestore
     const tokenData = { 
         user: colaborador.user || colaborador.email,
         nome: colaborador.nome,
@@ -283,13 +276,12 @@ function gerarCodigoAtribuicao() {
     
     localStorage.setItem(`token_${tokenId}`, JSON.stringify(tokenData));
     
-    // Guardar também no Firestore se disponível
     if (window.firebaseReady && window.db) {
         window.db.collection('tokens').doc(tokenId).set(tokenData);
     }
     
     const urlBase = window.location.origin + window.location.pathname.replace('admin.html', '') + 'formacao.html';
-    const linkFinal = `${urlBase}?t=${tokenId}`;  // ← LINK CURTO!
+    const linkFinal = `${urlBase}?t=${tokenId}`;
     
     const novaAtribuicao = {
         id: Date.now().toString(),
@@ -317,7 +309,7 @@ function gerarCodigoAtribuicao() {
     showToast("✅ Atribuição registada com sucesso!");
 }
 
-// ==================== ENVIO DE EMAIL (CORRIGIDO) ====================
+// ==================== ENVIO DE EMAIL ====================
 function EnvioEmail() {
     const colabId = document.getElementById('select-colaborador')?.value;
     if (!colabId) { showToast('❌ Selecione um colaborador primeiro'); return; }
@@ -404,12 +396,15 @@ function abrirModalModulo(tipo) {
   document.getElementById('modulo-video-url').value = '';
   document.getElementById('modulo-texto-conteudo').value = '';
   document.getElementById('modulo-link-url').value = '';
+  document.getElementById('modulo-link-pages').value = '1';
   document.getElementById('modulo-conteudo-video').style.display = tipo === 'video' ? 'block' : 'none';
   document.getElementById('modulo-conteudo-texto').style.display = tipo === 'texto' ? 'block' : 'none';
   document.getElementById('modulo-conteudo-link').style.display = tipo === 'link' ? 'block' : 'none';
   const titulos = { video: '🎬 Adicionar Vídeo', texto: '📄 Adicionar Texto', link: '🔗 Adicionar Link' };
   document.getElementById('modal-modulo-titulo').textContent = titulos[tipo] || 'Adicionar Módulo';
   document.getElementById('modal-modulo').style.display = 'flex';
+  
+  setTimeout(() => setupDetectarPaginas(), 100);
 }
 
 function editarModulo(id) {
@@ -423,8 +418,13 @@ function editarModulo(id) {
   document.getElementById('modulo-conteudo-link').style.display = m.tipo === 'link' ? 'block' : 'none';
   if (m.tipo === 'video') document.getElementById('modulo-video-url').value = m.conteudo?.url || '';
   if (m.tipo === 'texto') document.getElementById('modulo-texto-conteudo').value = m.conteudo?.texto || '';
-  if (m.tipo === 'link') document.getElementById('modulo-link-url').value = m.conteudo?.url || '';
+  if (m.tipo === 'link') {
+    document.getElementById('modulo-link-url').value = m.conteudo?.url || '';
+    document.getElementById('modulo-link-pages').value = m.conteudo?.pages || 1;
+  }
   document.getElementById('modal-modulo').style.display = 'flex';
+  
+  setTimeout(() => setupDetectarPaginas(), 100);
 }
 
 function salvarModulo() {
@@ -442,7 +442,8 @@ function salvarModulo() {
   } else if (moduloTipoAtual === 'link') {
     const url = document.getElementById('modulo-link-url').value.trim();
     if (!url) { showToast('❌ URL do link obrigatória'); return; }
-    conteudo = { url };
+    const pages = parseInt(document.getElementById('modulo-link-pages')?.value) || 1;
+    conteudo = { url, pages };
   }
   const duracao = document.getElementById('modulo-duracao').value.trim() || '15 min';
   const novoModulo = { id: editandoModuloId || Date.now().toString(), titulo, tipo: moduloTipoAtual, conteudo, duracao };
@@ -479,6 +480,102 @@ function renderModulos() {
   `).join('');
   document.querySelectorAll('.btn-editar-modulo').forEach(btn => btn.addEventListener('click', () => editarModulo(btn.dataset.id)));
   document.querySelectorAll('.btn-remover-modulo').forEach(btn => btn.addEventListener('click', () => removerModulo(btn.dataset.id)));
+}
+
+// ==================== DETEÇÃO AUTOMÁTICA DE PÁGINAS DE PDF ====================
+
+function extrairFileIdGoogleDrive(url) {
+  if (!url) return null;
+  
+  const patterns = [
+    /\/d\/([a-zA-Z0-9_-]+)/,
+    /id=([a-zA-Z0-9_-]+)/,
+    /\/file\/d\/([a-zA-Z0-9_-]+)/
+  ];
+  
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+  
+  return null;
+}
+
+function converterParaUrlDownload(fileId) {
+  const corsProxy = 'https://corsproxy.io/?';
+  const driveUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+  return corsProxy + encodeURIComponent(driveUrl);
+}
+
+async function obterNumeroPaginasPDF(url) {
+  const fileId = extrairFileIdGoogleDrive(url);
+  
+  if (!fileId) {
+    throw new Error('Não foi possível extrair o ID do ficheiro. Verifique o URL.');
+  }
+  
+  console.log('📄 ID do ficheiro:', fileId);
+  
+  const pdfUrl = converterParaUrlDownload(fileId);
+  
+  try {
+    const loadingTask = pdfjsLib.getDocument(pdfUrl);
+    const pdf = await loadingTask.promise;
+    console.log(`✅ PDF carregado! ${pdf.numPages} páginas.`);
+    return pdf.numPages;
+  } catch (error) {
+    console.error('❌ Erro:', error);
+    const proxyAlternativo = 'https://api.allorigins.win/raw?url=';
+    const pdfUrlAlt = proxyAlternativo + encodeURIComponent(`https://drive.google.com/uc?export=download&id=${fileId}`);
+    
+    const loadingTask = pdfjsLib.getDocument(pdfUrlAlt);
+    const pdf = await loadingTask.promise;
+    return pdf.numPages;
+  }
+}
+
+function setupDetectarPaginas() {
+  const btnDetectar = document.getElementById('btn-detectar-paginas');
+  const urlInput = document.getElementById('modulo-link-url');
+  const pagesInput = document.getElementById('modulo-link-pages');
+  const statusSpan = document.getElementById('detectar-status');
+  
+  if (!btnDetectar) return;
+  
+  // Remover listeners antigos
+  const newBtn = btnDetectar.cloneNode(true);
+  btnDetectar.parentNode.replaceChild(newBtn, btnDetectar);
+  
+  newBtn.addEventListener('click', async () => {
+    const url = urlInput.value.trim();
+    
+    if (!url) {
+      showToast('❌ Primeiro insira o URL do Google Drive');
+      return;
+    }
+    
+    newBtn.disabled = true;
+    newBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> A detetar...';
+    statusSpan.textContent = '⏳ A analisar o PDF...';
+    statusSpan.style.color = 'var(--warning)';
+    
+    try {
+      const numPages = await obterNumeroPaginasPDF(url);
+      pagesInput.value = numPages;
+      statusSpan.textContent = `✅ Detetado! ${numPages} páginas.`;
+      statusSpan.style.color = 'var(--success)';
+      showToast(`✅ PDF analisado! ${numPages} páginas.`);
+    } catch (error) {
+      statusSpan.textContent = '❌ ' + error.message;
+      statusSpan.style.color = 'var(--danger)';
+      showToast('❌ ' + error.message);
+    } finally {
+      newBtn.disabled = false;
+      newBtn.innerHTML = '<i class="fas fa-magic"></i> Detetar número de páginas automaticamente';
+    }
+  });
 }
 
 // ==================== PERGUNTAS ====================
@@ -565,7 +662,6 @@ function renderColabs() {
     return; 
   }
   
-  // ✅ Ordenar por matrícula (convertendo para número)
   const colaboradoresOrdenados = [...colaboradores].sort((a, b) => {
     const matA = parseInt(a.matricula) || 999999;
     const matB = parseInt(b.matricula) || 999999;
@@ -585,6 +681,7 @@ function renderColabs() {
     btn.addEventListener('click', () => removerColab(btn.dataset.id))
   );
 }
+
 function removerColab(id) {
   if (confirm('Remover este colaborador? Esta ação não pode ser desfeita.')) {
     colaboradores = colaboradores.filter(c => c.id !== id);
@@ -671,7 +768,6 @@ function atualizarSelectores() {
   if (colabGrid) {
     const cursoSelecionado = atribuirCurso?.value || '';
     
-    // ✅ CORREÇÃO: Ordenar colaboradores por matrícula (do menor para o maior)
     const colaboradoresOrdenados = [...colaboradores].sort((a, b) => {
       const matA = parseInt(a.matricula) || 999999;
       const matB = parseInt(b.matricula) || 999999;
@@ -722,7 +818,6 @@ function gerarLinksMassa() {
             continue;
         }
         
-        // NOVO: Usar token CURTO em vez de token longo
         const tokenId = Date.now().toString(36) + Math.random().toString(36).substr(2, 4) + '_' + contadorSucesso;
         const tokenData = { user, nome, email, matricula, cursoId, cursoNome, prazo, timestamp: Date.now() };
         localStorage.setItem(`token_${tokenId}`, JSON.stringify(tokenData));
@@ -900,8 +995,8 @@ function publicarFormacao() {
     id: editandoFormacaoId || Date.now().toString(), 
     nome: titulo, 
     duracao: duracao,
-    descricao: conteudoProgramatico,           // ← Para compatibilidade
-    conteudoProgramatico: conteudoProgramatico, // ✅ ADICIONADO
+    descricao: conteudoProgramatico,
+    conteudoProgramatico: conteudoProgramatico,
     icone: '📚', 
     modulos: [...modulos], 
     perguntas: perguntas.map(p => ({ 
@@ -928,7 +1023,6 @@ function publicarFormacao() {
   
   salvarFormacoes();
   
-  // Limpar formulário
   document.getElementById('f-titulo').value = '';
   document.getElementById('f-duracao').value = '';
   document.getElementById('f-descricao').value = '';
@@ -1071,7 +1165,6 @@ function editarFormacao(id) {
   document.getElementById('f-titulo').value = formacao.nome;
   document.getElementById('f-duracao').value = formacao.duracao;
   
-  // ✅ CORREÇÃO: Carregar o conteúdo programático
   document.getElementById('f-descricao').value = formacao.conteudoProgramatico || formacao.descricao || '';
   
   modulos = formacao.modulos ? [...formacao.modulos] : [];
@@ -1084,9 +1177,9 @@ function editarFormacao(id) {
   document.getElementById('editando-id').innerHTML = `✏️ Editando: ${escapeHtml(formacao.nome)}`;
   document.getElementById('btn-cancelar-edicao').style.display = 'inline-block';
   
-  // Mudar para o separador de formações
   document.querySelector('.admin-tab[data-tab="formacoes"]')?.click();
 }
+
 function cancelarEdicao() {
   editandoFormacaoId = null;
   document.getElementById('f-titulo').value = '';
@@ -1132,13 +1225,11 @@ function setupEventListeners() {
 }
 
 function initAdmin() {
-  // ✅ Verificar autenticação ANTES de carregar dados
   if (!localStorage.getItem('usuarioAdmin')) { 
     window.location.href = 'login.html'; 
     return; 
   }
   
-  // ✅ Só carrega dados do Firestore DEPOIS de confirmar autenticação
   carregarDadosExemplo().then(() => {
     setupEventListeners();
     renderModulos(); 
@@ -1195,4 +1286,4 @@ window.editarFormacao = editarFormacao;
 window.apagarFormacao = apagarFormacao;
 
 document.addEventListener('DOMContentLoaded', initAdmin);
-console.log("✅ admin.js carregado - versão corrigida");
+console.log("✅ admin.js carregado - versão completa com deteção de PDF");
