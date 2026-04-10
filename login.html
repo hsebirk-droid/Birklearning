@@ -14,6 +14,53 @@
 
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/login.css">
+  
+  <style>
+    /* Estilos específicos para recuperação */
+    #recovery-password-strength {
+      height: 4px;
+      margin-top: 6px;
+      border-radius: 2px;
+      background: #e2e8f0;
+      transition: all 0.2s;
+    }
+    
+    #recovery-message-1,
+    #recovery-message-2,
+    #recovery-message-3 {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+    
+    #recovery-message-1.error,
+    #recovery-message-2.error,
+    #recovery-message-3.error {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+    
+    #recovery-message-1.success,
+    #recovery-message-2.success,
+    #recovery-message-3.success {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+    
+    #recovery-matricula {
+      text-align: center;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 8px;
+    }
+    
+    #recovery-matricula::placeholder {
+      font-size: 14px;
+      font-weight: normal;
+      letter-spacing: normal;
+    }
+  </style>
 </head>
 <body>
   <div class="login-wrap">
@@ -84,25 +131,81 @@
     </div>
   </div>
 
-  <!-- Modal Recuperar Password -->
+  <!-- Modal Recuperar Password - 3 Passos -->
   <div id="forgotPasswordModal" class="modal">
     <div class="modal-content" style="max-width: 400px;">
       <div class="modal-header">
-        <h3><i class="fas fa-key"></i> Recuperar Password</h3>
+        <h3 id="recovery-step-title"><i class="fas fa-key"></i> Recuperar Password</h3>
         <button class="modal-close" onclick="closeForgotPasswordModal()">✕</button>
       </div>
       <div class="modal-body">
-        <p style="margin-bottom: 16px; font-size: 13px; color: var(--birkenstock-gray);">
-          Insira o seu email. Enviaremos um link para redefinir a sua password.
-        </p>
-        <div class="fg">
-          <label>Email</label>
-          <input type="email" id="recovery-email" placeholder="seu.email@birkenstock.pt">
+        
+        <!-- Passo 1: Email -->
+        <div id="recovery-step-1">
+          <p style="margin-bottom: 16px; font-size: 13px; color: var(--birkenstock-gray);">
+            <i class="fas fa-envelope"></i> Passo 1 de 3: Insira o seu email.
+          </p>
+          <div class="fg">
+            <label>Email</label>
+            <input type="email" id="recovery-email" placeholder="seu.email@birkenstock.pt">
+          </div>
+          <div id="recovery-message-1" style="margin-bottom: 16px;"></div>
+          <button class="btnlogin" id="btn-verify-email">
+            <i class="fas fa-arrow-right"></i> Verificar Email
+          </button>
         </div>
-        <div id="recovery-message" style="margin-bottom: 16px;"></div>
-        <button class="btnlogin" id="btn-send-recovery">
-          <i class="fas fa-paper-plane"></i> Enviar Link
-        </button>
+        
+        <!-- Passo 2: Matrícula (4 dígitos) -->
+        <div id="recovery-step-2" style="display:none;">
+          <p style="margin-bottom: 16px; font-size: 13px; color: var(--birkenstock-gray);">
+            <i class="fas fa-id-card"></i> Passo 2 de 3: Insira o seu número interno (4 dígitos).
+          </p>
+          <div class="fg">
+            <label>Número Interno (Matrícula)</label>
+            <input type="text" id="recovery-matricula" placeholder="Ex: 0234" maxlength="4" inputmode="numeric" pattern="\d*">
+            <small style="color: var(--birkenstock-gray); font-size: 10px;">Digite 4 dígitos (ex: "0234" para número 234)</small>
+          </div>
+          <div id="recovery-message-2" style="margin-bottom: 16px;"></div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btnlogin" id="btn-back-to-email" style="background: var(--birkenstock-gray);">
+              <i class="fas fa-arrow-left"></i> Voltar
+            </button>
+            <button class="btnlogin" id="btn-verify-matricula">
+              <i class="fas fa-arrow-right"></i> Verificar Matrícula
+            </button>
+          </div>
+        </div>
+        
+        <!-- Passo 3: Nova Password -->
+        <div id="recovery-step-3" style="display:none;">
+          <p style="margin-bottom: 16px; font-size: 13px; color: var(--birkenstock-gray);">
+            <i class="fas fa-lock"></i> Passo 3 de 3: Defina a sua nova password.
+          </p>
+          <div class="fg">
+            <label>Nova Password</label>
+            <input type="password" id="recovery-new-password" placeholder="••••••••" autocomplete="new-password">
+            <div id="recovery-password-strength" class="password-strength"></div>
+          </div>
+          <div class="fg">
+            <label>Confirmar Password</label>
+            <input type="password" id="recovery-confirm-password" placeholder="••••••••" autocomplete="new-password">
+          </div>
+          <div id="recovery-message-3" style="margin-bottom: 16px;"></div>
+          <button class="btnlogin" id="btn-save-password">
+            <i class="fas fa-save"></i> Guardar Nova Password
+          </button>
+        </div>
+        
+        <!-- Sucesso -->
+        <div id="recovery-success" style="display:none; text-align: center;">
+          <div style="font-size: 48px; color: var(--success); margin-bottom: 16px;">✅</div>
+          <h3 style="color: var(--birkenstock-blue); margin-bottom: 16px;">Password Atualizada!</h3>
+          <p style="margin-bottom: 24px; color: var(--birkenstock-gray);">A sua password foi alterada com sucesso.</p>
+          <a href="login.html" class="btnlogin" style="display: inline-block; text-decoration: none; width: auto; padding: 12px 32px;">
+            <i class="fas fa-sign-in-alt"></i> Fazer Login
+          </a>
+        </div>
+        
       </div>
     </div>
   </div>
@@ -218,22 +321,91 @@
       inputPassAdmin.focus();
     }
 
-    // ==================== RECUPERAÇÃO DE PASSWORD ====================
+    // ==================== RECUPERAÇÃO DE PASSWORD (3 PASSOS) ====================
     const forgotPasswordLink = document.getElementById('forgotPasswordLink');
     const forgotPasswordModal = document.getElementById('forgotPasswordModal');
-    const btnSendRecovery = document.getElementById('btn-send-recovery');
+
+    const step1 = document.getElementById('recovery-step-1');
+    const step2 = document.getElementById('recovery-step-2');
+    const step3 = document.getElementById('recovery-step-3');
+    const successDiv = document.getElementById('recovery-success');
+    const stepTitle = document.getElementById('recovery-step-title');
+
     const recoveryEmail = document.getElementById('recovery-email');
-    const recoveryMessage = document.getElementById('recovery-message');
+    const recoveryMatricula = document.getElementById('recovery-matricula');
+    const recoveryNewPassword = document.getElementById('recovery-new-password');
+    const recoveryConfirmPassword = document.getElementById('recovery-confirm-password');
+
+    const msg1 = document.getElementById('recovery-message-1');
+    const msg2 = document.getElementById('recovery-message-2');
+    const msg3 = document.getElementById('recovery-message-3');
+
+    const btnVerifyEmail = document.getElementById('btn-verify-email');
+    const btnBackToEmail = document.getElementById('btn-back-to-email');
+    const btnVerifyMatricula = document.getElementById('btn-verify-matricula');
+    const btnSavePassword = document.getElementById('btn-save-password');
+
+    const strengthDiv = document.getElementById('recovery-password-strength');
+
+    let currentRecoveryEmail = '';
+    let currentColaborador = null;
 
     function openForgotPasswordModal() {
       forgotPasswordModal.style.display = 'flex';
-      recoveryEmail.value = '';
-      recoveryMessage.innerHTML = '';
-      recoveryMessage.className = '';
+      resetRecoveryForm();
     }
 
     function closeForgotPasswordModal() {
       forgotPasswordModal.style.display = 'none';
+      resetRecoveryForm();
+    }
+
+    function resetRecoveryForm() {
+      step1.style.display = 'block';
+      step2.style.display = 'none';
+      step3.style.display = 'none';
+      successDiv.style.display = 'none';
+      stepTitle.innerHTML = '<i class="fas fa-key"></i> Recuperar Password';
+      
+      recoveryEmail.value = '';
+      recoveryMatricula.value = '';
+      recoveryNewPassword.value = '';
+      recoveryConfirmPassword.value = '';
+      
+      msg1.innerHTML = '';
+      msg1.className = '';
+      msg2.innerHTML = '';
+      msg2.className = '';
+      msg3.innerHTML = '';
+      msg3.className = '';
+      
+      strengthDiv.className = 'password-strength';
+      
+      currentRecoveryEmail = '';
+      currentColaborador = null;
+    }
+
+    function checkRecoveryPasswordStrength(pass) {
+      let strength = 0;
+      if (pass.length >= 8) strength++;
+      if (/[A-Z]/.test(pass)) strength++;
+      if (/[0-9]/.test(pass)) strength++;
+      if (/[^a-zA-Z0-9]/.test(pass)) strength++;
+      
+      strengthDiv.className = 'password-strength';
+      if (strength <= 1) {
+        strengthDiv.classList.add('strength-weak');
+      } else if (strength <= 2) {
+        strengthDiv.classList.add('strength-medium');
+      } else {
+        strengthDiv.classList.add('strength-strong');
+      }
+    }
+
+    function formatMatricula(value) {
+      let numbers = value.replace(/\D/g, '');
+      if (numbers.length > 4) numbers = numbers.slice(0, 4);
+      return numbers.padStart(4, '0');
     }
 
     if (forgotPasswordLink) {
@@ -243,36 +415,152 @@
       });
     }
 
-    if (btnSendRecovery) {
-      btnSendRecovery.addEventListener('click', async () => {
+    if (btnVerifyEmail) {
+      btnVerifyEmail.addEventListener('click', async () => {
         const email = recoveryEmail.value.trim();
         
         if (!email) {
-          recoveryMessage.innerHTML = '❌ Por favor, insira um email.';
-          recoveryMessage.style.color = 'var(--danger)';
+          msg1.innerHTML = '❌ Por favor, insira um email.';
+          msg1.className = 'error';
           return;
         }
         
-        btnSendRecovery.disabled = true;
-        btnSendRecovery.innerHTML = '<i class="fas fa-spinner fa-spin"></i> A enviar...';
+        btnVerifyEmail.disabled = true;
+        btnVerifyEmail.innerHTML = '<i class="fas fa-spinner fa-spin"></i> A verificar...';
         
-        const result = await window.sendPasswordResetEmail(email);
+        const result = await window.verifyEmailForRecovery(email);
         
         if (result.success) {
-          recoveryMessage.innerHTML = `✅ ${result.message}`;
-          recoveryMessage.style.color = 'var(--success)';
+          currentRecoveryEmail = email;
+          currentColaborador = result.colaborador;
+          
+          msg1.innerHTML = '';
+          msg1.className = '';
+          
+          step1.style.display = 'none';
+          step2.style.display = 'block';
+          stepTitle.innerHTML = '<i class="fas fa-id-card"></i> Verificar Matrícula';
+          recoveryMatricula.focus();
         } else {
-          recoveryMessage.innerHTML = `❌ ${result.message}`;
-          recoveryMessage.style.color = 'var(--danger)';
+          msg1.innerHTML = `❌ ${result.message}`;
+          msg1.className = 'error';
         }
         
-        btnSendRecovery.disabled = false;
-        btnSendRecovery.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Link';
+        btnVerifyEmail.disabled = false;
+        btnVerifyEmail.innerHTML = '<i class="fas fa-arrow-right"></i> Verificar Email';
+      });
+    }
+
+    if (btnBackToEmail) {
+      btnBackToEmail.addEventListener('click', () => {
+        step2.style.display = 'none';
+        step1.style.display = 'block';
+        stepTitle.innerHTML = '<i class="fas fa-key"></i> Recuperar Password';
+        msg2.innerHTML = '';
+        msg2.className = '';
+      });
+    }
+
+    if (recoveryMatricula) {
+      recoveryMatricula.addEventListener('input', (e) => {
+        const formatted = formatMatricula(e.target.value);
+        e.target.value = formatted;
+      });
+    }
+
+    if (btnVerifyMatricula) {
+      btnVerifyMatricula.addEventListener('click', async () => {
+        const matricula = recoveryMatricula.value.trim();
+        
+        if (!matricula || matricula.length !== 4) {
+          msg2.innerHTML = '❌ Por favor, insira 4 dígitos numéricos.';
+          msg2.className = 'error';
+          return;
+        }
+        
+        btnVerifyMatricula.disabled = true;
+        btnVerifyMatricula.innerHTML = '<i class="fas fa-spinner fa-spin"></i> A verificar...';
+        
+        const result = await window.verifyMatriculaForRecovery(currentRecoveryEmail, matricula);
         
         if (result.success) {
+          msg2.innerHTML = '';
+          msg2.className = '';
+          
+          step2.style.display = 'none';
+          step3.style.display = 'block';
+          stepTitle.innerHTML = '<i class="fas fa-lock"></i> Nova Password';
+          recoveryNewPassword.focus();
+        } else {
+          msg2.innerHTML = `❌ ${result.message}`;
+          msg2.className = 'error';
+        }
+        
+        btnVerifyMatricula.disabled = false;
+        btnVerifyMatricula.innerHTML = '<i class="fas fa-arrow-right"></i> Verificar Matrícula';
+      });
+    }
+
+    if (recoveryNewPassword) {
+      recoveryNewPassword.addEventListener('input', () => {
+        checkRecoveryPasswordStrength(recoveryNewPassword.value);
+      });
+    }
+
+    if (btnSavePassword) {
+      btnSavePassword.addEventListener('click', async () => {
+        const newPass = recoveryNewPassword.value;
+        const confirmPass = recoveryConfirmPassword.value;
+        
+        if (!newPass || !confirmPass) {
+          msg3.innerHTML = '❌ Preencha todos os campos.';
+          msg3.className = 'error';
+          return;
+        }
+        
+        if (newPass !== confirmPass) {
+          msg3.innerHTML = '❌ As passwords não coincidem.';
+          msg3.className = 'error';
+          return;
+        }
+        
+        if (newPass.length < 6) {
+          msg3.innerHTML = '❌ A password deve ter pelo menos 6 caracteres.';
+          msg3.className = 'error';
+          return;
+        }
+        
+        btnSavePassword.disabled = true;
+        btnSavePassword.innerHTML = '<i class="fas fa-spinner fa-spin"></i> A guardar...';
+        
+        const result = await window.saveNewPassword(currentRecoveryEmail, newPass);
+        
+        if (result.success) {
+          step3.style.display = 'none';
+          successDiv.style.display = 'block';
+          stepTitle.innerHTML = '<i class="fas fa-check-circle"></i> Sucesso!';
+          
+          if (window.showToast) {
+            window.showToast('✅ Password atualizada com sucesso!');
+          }
+          
           setTimeout(() => {
             closeForgotPasswordModal();
-          }, 3000);
+            window.location.href = 'login.html';
+          }, 2000);
+        } else {
+          msg3.innerHTML = `❌ ${result.message}`;
+          msg3.className = 'error';
+          btnSavePassword.disabled = false;
+          btnSavePassword.innerHTML = '<i class="fas fa-save"></i> Guardar Nova Password';
+        }
+      });
+    }
+
+    if (recoveryConfirmPassword) {
+      recoveryConfirmPassword.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          btnSavePassword.click();
         }
       });
     }
