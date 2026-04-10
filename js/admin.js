@@ -816,9 +816,37 @@ function exportarAcompanhamentoExcel() {
 // ==================== PUBLICAÇÃO ====================
 function publicarFormacao() {
   const titulo = document.getElementById('f-titulo')?.value.trim() || '';
-  if (!titulo) { showToast('❌ Título obrigatório'); return; }
-  if (!modulos.length) { showToast('❌ Adicione pelo menos um módulo'); return; }
-  const novaFormacao = { id: editandoFormacaoId || Date.now().toString(), nome: titulo, duracao: document.getElementById('f-duracao')?.value || '30 min', descricao: document.getElementById('f-descricao')?.value || '', conteudoProgramatico: document.getElementById('f-descricao')?.value || '', icone: '📚', modulos: [...modulos], perguntas: perguntas.map(p => ({ texto: p.texto, opcoes: p.opcoes, correta: p.correta })), dataCriacao: new Date().toLocaleDateString('pt-PT'), dataTimestamp: Date.now() };
+  const duracao = document.getElementById('f-duracao')?.value.trim() || '30 min';
+  const conteudoProgramatico = document.getElementById('f-descricao')?.value.trim() || '';
+  
+  if (!titulo) { 
+    showToast('❌ Título obrigatório'); 
+    return; 
+  }
+  
+  if (!modulos.length) { 
+    showToast('❌ Adicione pelo menos um módulo'); 
+    return; 
+  }
+  
+  const novaFormacao = { 
+    id: editandoFormacaoId || Date.now().toString(), 
+    nome: titulo, 
+    duracao: duracao,
+    descricao: conteudoProgramatico,           // ← Para compatibilidade
+    conteudoProgramatico: conteudoProgramatico, // ✅ ADICIONADO
+    icone: '📚', 
+    modulos: [...modulos], 
+    perguntas: perguntas.map(p => ({ 
+      id: p.id,
+      texto: p.texto, 
+      opcoes: p.opcoes, 
+      correta: p.correta 
+    })), 
+    dataCriacao: new Date().toLocaleDateString('pt-PT'), 
+    dataTimestamp: Date.now() 
+  };
+  
   if (editandoFormacaoId) {
     const index = formacoes.findIndex(f => f.id === editandoFormacaoId);
     if (index !== -1) formacoes[index] = novaFormacao;
@@ -826,13 +854,25 @@ function publicarFormacao() {
     editandoFormacaoId = null;
     document.getElementById('editando-id').innerHTML = '';
     document.getElementById('btn-cancelar-edicao').style.display = 'none';
-  } else { formacoes.push(novaFormacao); showToast(`✅ Formação "${titulo}" publicada!`); }
+  } else { 
+    formacoes.push(novaFormacao); 
+    showToast(`✅ Formação "${titulo}" publicada!`);
+  }
+  
   salvarFormacoes();
+  
+  // Limpar formulário
   document.getElementById('f-titulo').value = '';
   document.getElementById('f-duracao').value = '';
   document.getElementById('f-descricao').value = '';
-  modulos = []; perguntas = [];
-  renderModulos(); renderPerguntas(); renderFormacoesLista(); atualizarSelectores(); atualizarDashboard();
+  modulos = []; 
+  perguntas = [];
+  
+  renderModulos(); 
+  renderPerguntas(); 
+  renderFormacoesLista(); 
+  atualizarSelectores(); 
+  atualizarDashboard();
 }
 
 // ==================== HISTÓRICO ====================
@@ -960,15 +1000,24 @@ function alterarPasswordAdmin() {
 function editarFormacao(id) {
   const formacao = formacoes.find(f => f.id === id);
   if (!formacao) return;
+  
   document.getElementById('f-titulo').value = formacao.nome;
   document.getElementById('f-duracao').value = formacao.duracao;
-  document.getElementById('f-descricao').value = formacao.descricao;
+  
+  // ✅ CORREÇÃO: Carregar o conteúdo programático
+  document.getElementById('f-descricao').value = formacao.conteudoProgramatico || formacao.descricao || '';
+  
   modulos = formacao.modulos ? [...formacao.modulos] : [];
   perguntas = formacao.perguntas ? [...formacao.perguntas] : [];
   editandoFormacaoId = id;
-  renderModulos(); renderPerguntas();
+  
+  renderModulos(); 
+  renderPerguntas();
+  
   document.getElementById('editando-id').innerHTML = `✏️ Editando: ${escapeHtml(formacao.nome)}`;
   document.getElementById('btn-cancelar-edicao').style.display = 'inline-block';
+  
+  // Mudar para o separador de formações
   document.querySelector('.admin-tab[data-tab="formacoes"]')?.click();
 }
 function cancelarEdicao() {
