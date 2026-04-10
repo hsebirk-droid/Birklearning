@@ -5,34 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard | Birkenstock S&CC Portugal</title>
   
-  <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  
-  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   
-  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
   
-  <!-- CSS -->
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/dashboard.css">
 </head>
 <body>
   <div class="dashboard-header">
     <div class="logo-text">
-  BIRKENSTOCK
-  <small>S&CC Portugal - Formação</small>
-</div>
+      BIRKENSTOCK
+      <small>S&CC Portugal - Formação</small>
+    </div>
     <div class="user-menu">
       <button class="user-menu-btn" id="userMenuBtn">
         <span id="userAvatar">U</span>
       </button>
       <div class="user-dropdown" id="userDropdown">
         <a href="#" onclick="window.openProfileModal(); return false;"><i class="fas fa-user-circle"></i> Meu Perfil</a>
-        <a href="#" onclick="window.openCompletedModal(); return false;"><i class="fas fa-check-circle"></i> Concluídas</a>
+        <a href="#" onclick="window.openAllCertificatesModal(); return false;"><i class="fas fa-certificate"></i> Meus Certificados</a>
         <hr>
         <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Sair</a>
       </div>
@@ -57,10 +52,10 @@
         <div class="stat-icon" style="background: var(--warning-bg);">▶</div>
         <div class="stat-info">
           <h3 id="coursesInProgress">0</h3>
-          <p>Em andamento</p>
+          <p>Formações em curso</p>
         </div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" onclick="window.openAllCertificatesModal()" style="cursor: pointer;">
         <div class="stat-icon" style="background: var(--purple-bg);">🎓</div>
         <div class="stat-info">
           <h3 id="certificatesCount">0</h3>
@@ -75,7 +70,7 @@
       </div>
       <div class="filter-buttons">
         <button class="filter-btn active" data-filter="todas">Todas</button>
-        <button class="filter-btn" data-filter="em_andamento">Em andamento</button>
+        <button class="filter-btn" data-filter="em_andamento">Em curso</button>
         <button class="filter-btn" data-filter="concluidas">Concluídas</button>
       </div>
     </div>
@@ -95,25 +90,41 @@
         <div class="profile-avatar" id="profileAvatar">U</div>
         <h3 id="profileName">Nome</h3>
         <p id="profileEmail">email@birkenstock.pt</p>
-        <p id="profileMatricula">Matrícula: ---</p>
+        <p id="profileMatricula">Matrícula / Nº Interno: ---</p>
       </div>
     </div>
   </div>
 
-  <!-- Modal Concluídas -->
-  <div id="completedModal" class="modal">
-    <div class="modal-content">
+  <!-- Modal Todos os Certificados -->
+  <div id="allCertificatesModal" class="modal">
+    <div class="modal-content" style="max-width: 700px;">
       <div class="modal-header">
-        <h3>Formações Concluídas</h3>
-        <button class="modal-close" onclick="window.closeCompletedModal()">✕</button>
+        <h3><i class="fas fa-certificate"></i> Meus Certificados</h3>
+        <button class="modal-close" onclick="window.closeAllCertificatesModal()">✕</button>
       </div>
-      <div id="completedList"></div>
+      <div id="allCertificatesList" style="max-height: 500px; overflow-y: auto;"></div>
+    </div>
+  </div>
+
+  <!-- Modal Certificado Individual -->
+  <div id="certificateModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3><i class="fas fa-certificate"></i> Certificado</h3>
+        <button class="modal-close" onclick="window.closeCertificateModal()">✕</button>
+      </div>
+      <div id="certificateViewer"></div>
+      <div style="display: flex; gap: 12px; justify-content: center; margin-top: 20px;">
+        <button class="btn-sm" onclick="window.downloadCertificateFromModal()"><i class="fas fa-download"></i> Descarregar PDF</button>
+        <button class="btn-sm" onclick="window.printCertificateFromModal()"><i class="fas fa-print"></i> Imprimir</button>
+      </div>
     </div>
   </div>
 
   <div id="toast" class="toast"></div>
 
-  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/auth.js"></script>
