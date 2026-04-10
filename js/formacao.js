@@ -300,81 +300,12 @@ function carregarConteudoModulo(module, moduleIdStr) {
       </div>
     `;
   } else if (module.tipo === 'link' && module.conteudo?.url) {
-  const embedUrl = window.converterLinkGoogleDrive(module.conteudo.url);
-  const totalPages = module.conteudo?.pages || 1;
-  
-  contentHtml = `
-    <div class="doc-viewer">
-      <iframe src="${embedUrl}" class="doc-iframe" id="doc-iframe-${moduleIdStr}" style="width:100%;height:500px;"></iframe>
-    </div>
-    <div class="pdf-navigation" id="pdf-nav-${moduleIdStr}" style="margin-top: 16px; padding: 16px; background: var(--bg); border-radius: 8px; text-align: center;">
-      <p style="margin-bottom: 12px; font-weight: 600;">
-        <i class="fas fa-file-pdf"></i> Documento com ${totalPages} página(s)
-      </p>
-      <p style="margin-bottom: 12px; color: var(--birkenstock-gray); font-size: 13px;">
-        Navegue pelo documento usando as setas abaixo. Só poderá confirmar após chegar à última página.
-      </p>
-      <div style="display: flex; justify-content: center; align-items: center; gap: 16px;">
-        <button class="pdf-page-btn" id="pdf-prev-${moduleIdStr}" disabled style="background: var(--birkenstock-blue); color: white; border: none; padding: 10px 20px; border-radius: 30px; cursor: pointer;">
-          <i class="fas fa-chevron-left"></i> Anterior
-        </button>
-        <span id="pdf-page-indicator-${moduleIdStr}" style="font-weight: 600;">Página 1 de ${totalPages}</span>
-        <button class="pdf-page-btn" id="pdf-next-${moduleIdStr}" style="background: var(--birkenstock-blue); color: white; border: none; padding: 10px 20px; border-radius: 30px; cursor: pointer;">
-          Próxima <i class="fas fa-chevron-right"></i>
-        </button>
-      </div>
-      <div id="pdf-complete-message-${moduleIdStr}" style="display: none; margin-top: 16px; padding: 12px; background: var(--success-bg); border-radius: 8px; color: var(--success); font-weight: 600;">
-        <i class="fas fa-check-circle"></i> Chegou à última página! Pode confirmar a conclusão.
-      </div>
-    </div>
-  `;
-  contentDiv.innerHTML = contentHtml;
-  
-  // Controlo de navegação
-  let currentPage = 1;
-  const prevBtn = document.getElementById(`pdf-prev-${moduleIdStr}`);
-  const nextBtn = document.getElementById(`pdf-next-${moduleIdStr}`);
-  const pageIndicator = document.getElementById(`pdf-page-indicator-${moduleIdStr}`);
-  const completeMessage = document.getElementById(`pdf-complete-message-${moduleIdStr}`);
-  
-  function updatePageUI() {
-    pageIndicator.textContent = `Página ${currentPage} de ${totalPages}`;
-    prevBtn.disabled = currentPage <= 1;
-    
-    if (currentPage === totalPages) {
-      nextBtn.disabled = true;
-      completeMessage.style.display = 'block';
-      if (btn) {
-        btn.disabled = false;
-        window.showToast('✅ Chegou à última página! Pode confirmar a conclusão.');
-      }
+    const embedUrl = window.converterLinkGoogleDrive(module.conteudo.url);
+    if (embedUrl.includes('preview') || embedUrl.includes('docs.google.com')) {
+      contentHtml = `<div class="doc-viewer"><iframe src="${embedUrl}" class="doc-iframe" style="width:100%;height:500px;"></iframe></div>`;
     } else {
-      nextBtn.disabled = false;
-      completeMessage.style.display = 'none';
-      if (btn) btn.disabled = true;
+      contentHtml = `<div class="text-content"><p>Clique no link:</p><a href="${module.conteudo.url}" target="_blank">${module.conteudo.url}</a></div>`;
     }
-  }
-  
-  if (prevBtn) {
-    prevBtn.addEventListener('click', () => {
-      if (currentPage > 1) {
-        currentPage--;
-        updatePageUI();
-      }
-    });
-  }
-  
-  if (nextBtn) {
-    nextBtn.addEventListener('click', () => {
-      if (currentPage < totalPages) {
-        currentPage++;
-        updatePageUI();
-      }
-    });
-  }
-  
-  // Inicialmente, botão desabilitado
-  if (btn) btn.disabled = true;
   } else {
     contentHtml = '<div class="text-content">Conteúdo não disponível.</div>';
   }
@@ -395,7 +326,7 @@ function carregarConteudoModulo(module, moduleIdStr) {
   } else {
     setTimeout(() => {
       if (btn) btn.disabled = false;
-    }, 3000);
+    }, 30000);
   }
   
   if (btn && !btn.dataset.listener) {
