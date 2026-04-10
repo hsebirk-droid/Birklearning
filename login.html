@@ -67,6 +67,12 @@
           </button>
         </div>
 
+        <div class="forgot-password">
+          <a href="#" id="forgotPasswordLink" style="color: var(--birkenstock-blue); font-size: 12px; text-decoration: none;">
+            <i class="fas fa-key"></i> Esqueci a senha?
+          </a>
+        </div>
+
         <div class="password-hint">
           <span><i class="far fa-question-circle"></i> Dúvidas? Contacte o RH</span>
         </div>
@@ -74,6 +80,29 @@
 
       <div class="login-footer">
         &copy; 2026 Birkenstock S&CC Portugal · Plataforma de Formação
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Recuperar Password -->
+  <div id="forgotPasswordModal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3><i class="fas fa-key"></i> Recuperar Password</h3>
+        <button class="modal-close" onclick="closeForgotPasswordModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 16px; font-size: 13px; color: var(--birkenstock-gray);">
+          Insira o seu email. Enviaremos um link para redefinir a sua password.
+        </p>
+        <div class="fg">
+          <label>Email</label>
+          <input type="email" id="recovery-email" placeholder="seu.email@birkenstock.pt">
+        </div>
+        <div id="recovery-message" style="margin-bottom: 16px;"></div>
+        <button class="btnlogin" id="btn-send-recovery">
+          <i class="fas fa-paper-plane"></i> Enviar Link
+        </button>
       </div>
     </div>
   </div>
@@ -189,6 +218,74 @@
       inputPassAdmin.focus();
     }
 
+    // ==================== RECUPERAÇÃO DE PASSWORD ====================
+    const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+    const forgotPasswordModal = document.getElementById('forgotPasswordModal');
+    const btnSendRecovery = document.getElementById('btn-send-recovery');
+    const recoveryEmail = document.getElementById('recovery-email');
+    const recoveryMessage = document.getElementById('recovery-message');
+
+    function openForgotPasswordModal() {
+      forgotPasswordModal.style.display = 'flex';
+      recoveryEmail.value = '';
+      recoveryMessage.innerHTML = '';
+      recoveryMessage.className = '';
+    }
+
+    function closeForgotPasswordModal() {
+      forgotPasswordModal.style.display = 'none';
+    }
+
+    if (forgotPasswordLink) {
+      forgotPasswordLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        openForgotPasswordModal();
+      });
+    }
+
+    if (btnSendRecovery) {
+      btnSendRecovery.addEventListener('click', async () => {
+        const email = recoveryEmail.value.trim();
+        
+        if (!email) {
+          recoveryMessage.innerHTML = '❌ Por favor, insira um email.';
+          recoveryMessage.style.color = 'var(--danger)';
+          return;
+        }
+        
+        btnSendRecovery.disabled = true;
+        btnSendRecovery.innerHTML = '<i class="fas fa-spinner fa-spin"></i> A enviar...';
+        
+        const result = await window.sendPasswordResetEmail(email);
+        
+        if (result.success) {
+          recoveryMessage.innerHTML = `✅ ${result.message}`;
+          recoveryMessage.style.color = 'var(--success)';
+        } else {
+          recoveryMessage.innerHTML = `❌ ${result.message}`;
+          recoveryMessage.style.color = 'var(--danger)';
+        }
+        
+        btnSendRecovery.disabled = false;
+        btnSendRecovery.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Link';
+        
+        if (result.success) {
+          setTimeout(() => {
+            closeForgotPasswordModal();
+          }, 3000);
+        }
+      });
+    }
+
+    window.addEventListener('click', (e) => {
+      if (e.target === forgotPasswordModal) {
+        closeForgotPasswordModal();
+      }
+    });
+
+    window.openForgotPasswordModal = openForgotPasswordModal;
+    window.closeForgotPasswordModal = closeForgotPasswordModal;
+
     // ==================== EVENT LISTENERS ====================
     btnColab.onclick = handleLoginColaborador;
     btnAdmin.onclick = handleLoginAdmin;
@@ -207,10 +304,9 @@
       if (e.key === 'Enter') handleLoginAdmin();
     });
 
-    // ✅ CORRIGIDO: NÃO redireciona automaticamente - utilizador tem que fazer login
     document.addEventListener('DOMContentLoaded', () => {
-  inputEmail.focus();
-});
+      inputEmail.focus();
+    });
   </script>
 </body>
 </html>
