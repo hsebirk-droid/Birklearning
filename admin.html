@@ -17,6 +17,9 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
   
+  <!-- PDF.js para deteção automática de páginas -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  
   <!-- Bibliotecas externas -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -29,9 +32,9 @@
 <body>
   <div class="app-header">
     <div class="logo-text">
-  BIRKENSTOCK
-  <small>S&CC Portugal - Formação · Admin</small>
-</div>
+      BIRKENSTOCK
+      <small>S&CC Portugal - Formação · Admin</small>
+    </div>
     <button class="btn-sair" onclick="window.logout()">Sair</button>
   </div>
 
@@ -75,9 +78,9 @@
           <input type="text" id="f-duracao" placeholder="Ex: 45 minutos">
         </div>
         <div class="fg">
-  <label>Conteúdo Programático</label>
-  <textarea id="f-descricao" rows="5" placeholder="Descreva o conteúdo programático da formação..."></textarea>
-</div>
+          <label>Conteúdo Programático</label>
+          <textarea id="f-descricao" rows="5" placeholder="Descreva o conteúdo programático da formação..."></textarea>
+        </div>
         
         <div class="sec-head" style="margin-top: 24px; background: var(--info);">
           <h2>📦 Módulos da Formação</h2>
@@ -374,8 +377,29 @@ Emitido em {{data}}.</textarea>
       </div>
       <div id="modulo-conteudo-link" style="display: none;">
         <div class="fg">
-          <label>URL do Link/Documento</label>
+          <label>URL do Documento (Google Drive - PÚBLICO)</label>
           <input type="text" id="modulo-link-url" placeholder="https://drive.google.com/file/d/...">
+          <small style="color: var(--info);">
+            <i class="fas fa-info-circle"></i> 
+            Certifique-se que o ficheiro está partilhado como "Qualquer pessoa com o link pode ver"
+          </small>
+        </div>
+        
+        <!-- Botão para detetar páginas automaticamente -->
+        <div style="margin-bottom: 16px;">
+          <button type="button" class="btn-sm" id="btn-detectar-paginas" style="background: var(--info);">
+            <i class="fas fa-magic"></i> Detetar número de páginas automaticamente
+          </button>
+          <span id="detectar-status" style="margin-left: 12px; font-size: 12px;"></span>
+        </div>
+        
+        <div class="fg">
+          <label>Número de Páginas do Documento</label>
+          <input type="number" id="modulo-link-pages" placeholder="Será detetado automaticamente" min="1" value="1" required>
+          <small style="color: var(--birkenstock-gray);">
+            <i class="fas fa-file-pdf"></i> 
+            Clique em "Detetar número de páginas" para preencher automaticamente
+          </small>
         </div>
       </div>
       <button class="btn" id="btn-salvar-modulo">Salvar Módulo</button>
