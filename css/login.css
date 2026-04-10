@@ -175,3 +175,44 @@
   justify-content: center;
   gap: 16px;
 }
+
+/* ============================================
+   RECUPERAÇÃO DE PASSWORD
+   ============================================ */
+
+.forgot-password {
+  text-align: right;
+  margin-top: 8px;
+  margin-bottom: 16px;
+}
+
+.forgot-password a {
+  color: var(--birkenstock-blue);
+  font-size: 12px;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.forgot-password a:hover {
+  color: var(--birkenstock-blue-dark);
+  text-decoration: underline;
+}
+
+#recovery-message {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-body .fg {
+  margin-bottom: 16px;
+}
+
+.modal-body .btnlogin {
+  margin-top: 8px;
+}
