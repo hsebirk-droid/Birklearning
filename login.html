@@ -162,8 +162,8 @@
           </p>
           <div class="fg">
             <label>Número Interno (Matrícula)</label>
-            <input type="text" id="recovery-matricula" placeholder="Ex: 0234" maxlength="4" inputmode="numeric" pattern="\d*">
-            <small style="color: var(--birkenstock-gray); font-size: 10px;">Digite 4 dígitos (ex: "0234" para número 234)</small>
+            <input type="text" id="recovery-matricula" placeholder="Ex: 0234" inputmode="numeric">
+            <small style="color: var(--birkenstock-gray); font-size: 10px;">Digite os números (ex: 234 para matrícula 0234)</small>
           </div>
           <div id="recovery-message-2" style="margin-bottom: 16px;"></div>
           <div style="display: flex; gap: 8px;">
@@ -402,15 +402,6 @@
       }
     }
 
-    function formatMatricula(value) {
-  // Remove tudo que não for número
-  let numbers = value.replace(/\D/g, '');
-  // Limita a 4 dígitos
-  if (numbers.length > 4) numbers = numbers.slice(0, 4);
-  // Retorna apenas os números, SEM padStart enquanto digita
-  return numbers;
-}
-
     if (forgotPasswordLink) {
       forgotPasswordLink.addEventListener('click', (e) => {
         e.preventDefault();
@@ -464,68 +455,73 @@
       });
     }
 
+    // ✅ CORRIGIDO: Campo de matrícula permite digitação normal
     if (recoveryMatricula) {
-  recoveryMatricula.addEventListener('input', (e) => {
-    // Apenas filtra números, sem forçar 4 dígitos enquanto digita
-    let numbers = e.target.value.replace(/\D/g, '');
-    if (numbers.length > 4) numbers = numbers.slice(0, 4);
-    e.target.value = numbers;
-  });
-  
-  // Quando o campo perde o foco, formata para 4 dígitos com zeros à esquerda
-  recoveryMatricula.addEventListener('blur', (e) => {
-    let numbers = e.target.value.replace(/\D/g, '');
-    if (numbers.length > 0 && numbers.length < 4) {
-      e.target.value = numbers.padStart(4, '0');
-    } else if (numbers.length === 0) {
-      e.target.value = '';
+      // Permite apenas números durante a digitação
+      recoveryMatricula.addEventListener('keypress', (e) => {
+        const key = e.key;
+        if (!/^\d$/.test(key) && key !== 'Backspace' && key !== 'Delete' && key !== 'ArrowLeft' && key !== 'ArrowRight' && key !== 'Tab') {
+          e.preventDefault();
+        }
+      });
+      
+      // Quando perde o foco, formata para 4 dígitos com zeros à esquerda
+      recoveryMatricula.addEventListener('blur', (e) => {
+        let value = e.target.value;
+        let numbers = value.replace(/\D/g, '');
+        if (numbers.length > 4) numbers = numbers.slice(0, 4);
+        if (numbers.length > 0) {
+          e.target.value = numbers.padStart(4, '0');
+        } else {
+          e.target.value = '';
+        }
+      });
     }
-  });
-}
 
     if (btnVerifyMatricula) {
-  btnVerifyMatricula.addEventListener('click', async () => {
-    let matricula = recoveryMatricula.value.trim();
-    
-    // Se tiver menos de 4 dígitos, completa com zeros à esquerda
-    if (matricula.length > 0 && matricula.length < 4) {
-      matricula = matricula.padStart(4, '0');
+      btnVerifyMatricula.addEventListener('click', async () => {
+        let matricula = recoveryMatricula.value.trim();
+        
+        // Limpa e formata a matrícula
+        let numbers = matricula.replace(/\D/g, '');
+        if (numbers.length > 0) {
+          matricula = numbers.padStart(4, '0');
+        }
+        
+        if (!matricula || matricula.length !== 4) {
+          msg2.innerHTML = '❌ Por favor, insira 4 dígitos numéricos.';
+          msg2.className = 'error';
+          return;
+        }
+        
+        if (!/^\d{4}$/.test(matricula)) {
+          msg2.innerHTML = '❌ A matrícula deve conter apenas números.';
+          msg2.className = 'error';
+          return;
+        }
+        
+        btnVerifyMatricula.disabled = true;
+        btnVerifyMatricula.innerHTML = '<i class="fas fa-spinner fa-spin"></i> A verificar...';
+        
+        const result = await window.verifyMatriculaForRecovery(currentRecoveryEmail, matricula);
+        
+        if (result.success) {
+          msg2.innerHTML = '';
+          msg2.className = '';
+          
+          step2.style.display = 'none';
+          step3.style.display = 'block';
+          stepTitle.innerHTML = '<i class="fas fa-lock"></i> Nova Password';
+          recoveryNewPassword.focus();
+        } else {
+          msg2.innerHTML = `❌ ${result.message}`;
+          msg2.className = 'error';
+        }
+        
+        btnVerifyMatricula.disabled = false;
+        btnVerifyMatricula.innerHTML = '<i class="fas fa-arrow-right"></i> Verificar Matrícula';
+      });
     }
-    
-    if (!matricula || matricula.length !== 4) {
-      msg2.innerHTML = '❌ Por favor, insira 4 dígitos numéricos.';
-      msg2.className = 'error';
-      return;
-    }
-    
-    if (!/^\d{4}$/.test(matricula)) {
-      msg2.innerHTML = '❌ A matrícula deve conter apenas números.';
-      msg2.className = 'error';
-      return;
-    }
-    
-    btnVerifyMatricula.disabled = true;
-    btnVerifyMatricula.innerHTML = '<i class="fas fa-spinner fa-spin"></i> A verificar...';
-    
-    const result = await window.verifyMatriculaForRecovery(currentRecoveryEmail, matricula);
-    
-    if (result.success) {
-      msg2.innerHTML = '';
-      msg2.className = '';
-      
-      step2.style.display = 'none';
-      step3.style.display = 'block';
-      stepTitle.innerHTML = '<i class="fas fa-lock"></i> Nova Password';
-      recoveryNewPassword.focus();
-    } else {
-      msg2.innerHTML = `❌ ${result.message}`;
-      msg2.className = 'error';
-    }
-    
-    btnVerifyMatricula.disabled = false;
-    btnVerifyMatricula.innerHTML = '<i class="fas fa-arrow-right"></i> Verificar Matrícula';
-  });
-}
 
     if (recoveryNewPassword) {
       recoveryNewPassword.addEventListener('input', () => {
