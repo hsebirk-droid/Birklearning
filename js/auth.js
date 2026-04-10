@@ -249,5 +249,191 @@ window.isAuthenticated = isAuthenticated;
 window.logout = logout;
 window.getColaboradores = getColaboradores;
 window.generateUsername = generateUsername;
+// ==================== RECUPERAÇÃO DE PASSWORD ====================
 
+/**
+ * Envia um email de recuperação de password
+ * @param {string} email - Email do utilizador
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
+async function sendPasswordResetEmail(email) {
+  if (!email) {
+    return { success: false, message: 'Por favor, insira um email.' };
+  }
+  
+  // Verificar se o email existe nos colaboradores
+  const colaboradores = await carregarColaboradores();
+  const colaborador = colaboradores.find(c => 
+    String(c.email || '').toLowerCase() === email.toLowerCase()
+  );
+  
+  if (!colaborador) {
+    return { success: false, message: 'Email não encontrado na base de dados.' };
+  }
+  
+  // Tentar enviar pelo Firebase Auth
+  if (window.firebaseReady && window.auth) {
+    try {
+      await window.auth.sendPasswordResetEmail(email, {
+        url: window.location.origin + '/reset-password.html',
+        handleCodeInApp: true
+      });
+      return { 
+        success: true, 
+        message: 'Email de recuperação enviado! Verifique a sua caixa de entrada.' 
+      };
+    } catch (error) {
+      console.warn('Firebase password reset failed:', error.message);
+      // Continua para o fallback
+    }
+  }
+  
+  // Fallback: Gerar token local para recuperação
+  const resetToken = gerarTokenSeguro({ 
+    email: email, 
+    userId: colaborador.id,
+    exp: Date.now() + 3600000 // 1 hora
+  });
+  
+  localStorage.setItem(`reset_${email}`, resetToken);
+  
+  // Gerar link de recuperação local
+  const resetLink = `${window.location.origin}${window.location.pathname.replace('login.html', '')}reset-password.html?token=${resetToken}&email=${encodeURIComponent(email)}`;
+  
+  // Abrir cliente de email com o link
+  const assunto = 'Birkenstock - Recuperação de Password';
+  const corpo = `Olá ${colaborador.nome},\n\nRecebemos um pedido para redefinir a sua password.\n\nClique no link abaixo para criar uma nova password (válido por 1 hora):\n\n${resetLink}\n\nSe não foi você que solicitou, ignore este email.\n\nAtenciosamente,\nEquipa Birkenstock S&CC Portugal`;
+  
+  window.location.href = `mailto:${email}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+  
+  return { 
+    success: true, 
+    message: 'A abrir cliente de email com instruções de recuperação.' 
+  };
+}
+
+/**
+ * Gera um token seguro para recuperação de password
+ * @param {object} dados - Dados a incluir no token
+ * @returns {string} Token seguro
+ */
+function gerarTokenSeguro(dados) {
+  try {
+    const jsonStr = JSON.stringify(dados);
+    const encoder = new TextEncoder();
+    const utf8Bytes = encoder.encode(jsonStr);
+    let base64 = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < utf8Bytes.length; i += chunk) {
+      const slice = utf8Bytes.subarray(i, i + chunk);
+      base64 += String.fromCharCode.apply(null, slice);
+    }
+    base64 = btoa(base64);
+    base64 = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    return base64;
+  } catch(e) {
+    console.error('Erro ao gerar token:', e);
+    const jsonStr = JSON.stringify(dados);
+    let base64 = btoa(unescape(encodeURIComponent(jsonStr)));
+    base64 = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    return base64;
+  }
+}
+
+/**
+ * Valida um token de recuperação de password
+ * @param {string} token - Token a validar
+ * @param {string} email - Email associado ao token
+ * @returns {boolean} true se o token for válido
+ */
+function validateResetToken(token, email) {
+  try {
+    // Decodificar o token base64
+    let base64 = token.replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) base64 += '=';
+    
+    const binaryStr = atob(base64);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+    
+    const decoder = new TextDecoder('utf-8');
+    const jsonStr = decoder.decode(bytes);
+    const dados = JSON.parse(jsonStr);
+    
+    // Verificar email
+    if (dados.email !== email) return false;
+    
+    // Verificar expiração (1 hora)
+    if (dados.exp && Date.now() > dados.exp) return false;
+    
+    return true;
+  } catch (e) {
+    console.error('Erro ao validar token:', e);
+    return false;
+  }
+}
+
+/**
+ * Redefine a password do utilizador
+ * @param {string} email - Email do utilizador
+ * @param {string} newPassword - Nova password
+ * @param {string} token - Token de validação
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
+async function resetPassword(email, newPassword, token) {
+  if (!email || !newPassword) {
+    return { success: false, message: 'Email e nova password são obrigatórios.' };
+  }
+  
+  if (newPassword.length < 6) {
+    return { success: false, message: 'A password deve ter pelo menos 6 caracteres.' };
+  }
+  
+  // Validar token
+  const savedToken = localStorage.getItem(`reset_${email}`);
+  if (savedToken !== token) {
+    return { success: false, message: 'Token inválido ou expirado.' };
+  }
+  
+  // Validar estrutura do token
+  if (!validateResetToken(token, email)) {
+    return { success: false, message: 'Link de recuperação inválido ou expirado.' };
+  }
+  
+  // Atualizar no localStorage
+  const colaboradores = await carregarColaboradores();
+  const index = colaboradores.findIndex(c => 
+    String(c.email || '').toLowerCase() === email.toLowerCase()
+  );
+  
+  if (index === -1) {
+    return { success: false, message: 'Colaborador não encontrado.' };
+  }
+  
+  // Atualizar password
+  colaboradores[index].pass = newPassword;
+  localStorage.setItem('colaboradores', JSON.stringify(colaboradores));
+  
+  // Atualizar no Firestore se disponível
+  if (window.firebaseReady && window.db) {
+    try {
+      await window.db.collection('colaboradores').doc(colaboradores[index].id).update({
+        pass: newPassword
+      });
+      console.log('☁️ Password atualizada no Firestore');
+    } catch (error) {
+      console.warn('⚠️ Erro ao atualizar Firestore:', error);
+    }
+  }
+  
+  // Remover token usado
+  localStorage.removeItem(`reset_${email}`);
+  
+  return { success: true, message: 'Password atualizada com sucesso!' };
+}
+
+// Expor funções globalmente
+window.sendPasswordResetEmail = sendPasswordResetEmail;
+window.resetPassword = resetPassword;
+window.validateResetToken = validateResetToken;
 console.log('✅ auth.js carregado com sucesso');
