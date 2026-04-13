@@ -1197,6 +1197,102 @@ function setupEventListeners() {
   document.querySelectorAll('.modal-close').forEach(btn => btn.addEventListener('click', () => btn.closest('.modal').style.display = 'none'));
 }
 
+// ==================== LISTENERS EM TEMPO REAL ====================
+function setupRealtimeListeners() {
+  if (!window.firebaseReady || !window.db) {
+    console.log('⚠️ Firestore não disponível para listeners em tempo real');
+    return;
+  }
+  
+  console.log('🎧 Configurando listeners em tempo real...');
+  
+  // Ouvir mudanças nos históricos
+  window.db.collection('historicos').onSnapshot(snapshot => {
+    const changes = snapshot.docChanges();
+    if (changes.length === 0) return;
+    
+    console.log(`📡 Históricos atualizados (${changes.length} alterações)`);
+    
+    // Atualizar array global
+    historicos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    localStorage.setItem('historicos', JSON.stringify(historicos));
+    
+    // Atualizar UI se o separador estiver ativo
+    const secHistorico = document.getElementById('sec-historico');
+    const secAcompanhar = document.getElementById('sec-acompanhar');
+    const secOverview = document.getElementById('sec-overview');
+    
+    if (secHistorico?.classList.contains('active')) {
+      renderHistorico();
+    }
+    if (secAcompanhar?.classList.contains('active')) {
+      renderAcompanhamento();
+    }
+    if (secOverview?.classList.contains('active')) {
+      atualizarDashboard();
+    }
+  }, error => {
+    console.error('❌ Erro no listener de históricos:', error);
+  });
+  
+  // Ouvir mudanças nas atribuições
+  window.db.collection('atribuicoes').onSnapshot(snapshot => {
+    const changes = snapshot.docChanges();
+    if (changes.length === 0) return;
+    
+    console.log(`📡 Atribuições atualizadas (${changes.length} alterações)`);
+    
+    // Atualizar array global
+    atribuicoes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    localStorage.setItem('atribuicoes', JSON.stringify(atribuicoes));
+    
+    // Atualizar UI
+    const secAcompanhar = document.getElementById('sec-acompanhar');
+    const secOverview = document.getElementById('sec-overview');
+    const secAtribuirMassa = document.getElementById('sec-atribuir-massa');
+    
+    if (secAcompanhar?.classList.contains('active')) {
+      renderAcompanhamento();
+    }
+    if (secOverview?.classList.contains('active')) {
+      atualizarDashboard();
+    }
+    if (secAtribuirMassa?.classList.contains('active')) {
+      atualizarSelectores();
+    }
+  }, error => {
+    console.error('❌ Erro no listener de atribuições:', error);
+  });
+  
+  // Ouvir mudanças nas formações
+  window.db.collection('formacoes').onSnapshot(snapshot => {
+    const changes = snapshot.docChanges();
+    if (changes.length === 0) return;
+    
+    console.log(`📡 Formações atualizadas (${changes.length} alterações)`);
+    
+    formacoes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    localStorage.setItem('formacoes', JSON.stringify(formacoes));
+    
+    // Atualizar UI
+    const secFormacoes = document.getElementById('sec-formacoes');
+    const secOverview = document.getElementById('sec-overview');
+    
+    if (secFormacoes?.classList.contains('active')) {
+      renderFormacoesLista();
+    }
+    if (secOverview?.classList.contains('active')) {
+      atualizarDashboard();
+    }
+    
+    atualizarSelectores();
+  }, error => {
+    console.error('❌ Erro no listener de formações:', error);
+  });
+  
+  console.log('✅ Listeners em tempo real configurados!');
+}
+
 function initAdmin() {
   const firebaseUser = window.auth?.currentUser;
   const isAdminEmail = firebaseUser?.email && window.isAdminEmail ? window.isAdminEmail(firebaseUser.email) : false;
@@ -1229,6 +1325,10 @@ function initAdmin() {
     renderFormacoesLista();
     carregarTemplateCertificado(); 
     renderAcompanhamento();
+    
+    // 🔥 NOVO: Configurar listeners em tempo real
+    setupRealtimeListeners();
+    
     setTimeout(() => atualizarSelectores(), 500);
   });
 }
