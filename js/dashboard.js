@@ -23,23 +23,26 @@ async function loadCourses() {
   loadingDiv.style.display = 'block';
   coursesGrid.style.display = 'none';
 
+    // ✅ SEMPRE buscar do Firestore (sem fallback para localStorage)
+  if (!window.firebaseReady || !window.db) {
+    console.error('❌ Firestore indisponível');
+    loadingDiv.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔌</div><h4>Sem ligação</h4><p>Verifique a sua internet e tente novamente.</p><button class="btn-start" onclick="location.reload()">🔄 Tentar novamente</button></div>';
+    coursesGrid.style.display = 'block';
+    return;
+  }
+  
   try {
-    if (window.firebaseReady && window.db) {
-      try {
-        const snapshot = await window.db.collection('formacoes').get();
-        allCourses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        console.log('✅ Formações carregadas do Firestore:', allCourses.length);
-      } catch (firestoreError) {
-        console.warn('⚠️ Firestore falhou, usando localStorage:', firestoreError.message);
-        allCourses = JSON.parse(localStorage.getItem('formacoes') || '[]');
-      }
-    } else {
-      console.log('📦 Firestore indisponível, usando localStorage');
-      allCourses = JSON.parse(localStorage.getItem('formacoes') || '[]');
-    }
+    const snapshot = await window.db.collection('formacoes').get();
+    allCourses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    console.log('✅ Formações carregadas do Firestore:', allCourses.length);
+    
+    // Guardar no localStorage APENAS para performance (cache), não como fallback
+    localStorage.setItem('formacoes', JSON.stringify(allCourses));
   } catch (error) {
-    console.error('❌ Erro geral, usando localStorage:', error);
-    allCourses = JSON.parse(localStorage.getItem('formacoes') || '[]');
+    console.error('❌ Erro ao carregar do Firestore:', error);
+    loadingDiv.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❌</div><h4>Erro de ligação</h4><p>Não foi possível carregar as formações.</p><button class="btn-start" onclick="location.reload()">🔄 Tentar novamente</button></div>';
+    coursesGrid.style.display = 'block';
+    return;
   }
 
   console.log('📚 Formações carregadas:', allCourses.length);
@@ -87,22 +90,17 @@ async function filtrarApenasAtribuidas() {
   
   console.log('🔍 Filtrando formações para:', userIdentifier);
   
-  let atribuicoesData = [];
-  
-  try {
-    if (window.firebaseReady && window.db) {
-      try {
-        const snapshot = await window.db.collection('atribuicoes').get();
-        atribuicoesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      } catch (e) {
-        atribuicoesData = JSON.parse(localStorage.getItem('atribuicoes') || '[]');
-      }
-    } else {
-      atribuicoesData = JSON.parse(localStorage.getItem('atribuicoes') || '[]');
-    }
-  } catch (e) {
-    atribuicoesData = JSON.parse(localStorage.getItem('atribuicoes') || '[]');
+    // ✅ SEMPRE buscar do Firestore
+  if (!window.firebaseReady || !window.db) {
+    console.error('❌ Firestore indisponível para atribuições');
+    return;
   }
+  
+  const snapshot = await window.db.collection('atribuicoes').get();
+  const atribuicoesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  
+  // Guardar cache para performance
+  localStorage.setItem('atribuicoes', JSON.stringify(atribuicoesData));
   
   console.log('📋 Total de atribuições:', atribuicoesData.length);
   
