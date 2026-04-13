@@ -1156,7 +1156,23 @@ function baixarPDFCertificadoModal() {
 
 function exportarAcompanhamentoExcel() {
   if (!atribuicoes.length) { showToast('❌ Sem dados para exportar'); return; }
-  const dados = atribuicoes.map(a => ({ 'Formação': a.cursoNome, 'Colaborador': a.colaboradorNome, 'Matrícula': a.colaboradorMatricula || '', 'Email': a.colaboradorEmail || '', 'Prazo': a.prazo || '', 'Status': a.status === 'concluido' ? 'Concluído' : 'Pendente', 'Data Conclusão': a.dataConclusao ? formatDate(a.dataConclusao) : '' }));
+  
+  const dados = atribuicoes.map(a => {
+    const formacao = formacoes.find(f => f.id === a.cursoId);
+    const duracao = formacao?.duracao || '—';
+    
+    return { 
+      'Formação': a.cursoNome, 
+      'Duração': duracao,
+      'Colaborador': a.colaboradorNome, 
+      'Matrícula': a.colaboradorMatricula || '', 
+      'Email': a.colaboradorEmail || '', 
+      'Prazo': a.prazo || '', 
+      'Status': a.status === 'concluido' ? 'Concluído' : 'Pendente', 
+      'Data Conclusão': a.dataConclusao ? formatDate(a.dataConclusao) : '' 
+    };
+  });
+  
   downloadExcel(dados, 'acompanhamento_formacoes', 'Acompanhamento');
 }
 
@@ -1264,7 +1280,23 @@ function visualizarCertificadoHistorico(historicoId) {
 
 function exportarHistoricoExcel() {
   if (!historicos.length) { showToast('❌ Sem dados para exportar'); return; }
-  const dados = historicos.map(h => ({ 'Colaborador': h.nomeDisplay || h.nome, 'Email': h.email || '', 'Formação': h.curso, 'Data': h.data, 'Nota': h.nota }));
+  
+  const dados = historicos.map(h => {
+    // Procurar a formação correspondente para obter a duração
+    const formacao = formacoes.find(f => f.id === h.cursoId);
+    const duracao = formacao?.duracao || '—';
+    
+    return { 
+      'Colaborador': h.nomeDisplay || h.nome, 
+      'Email': h.email || '', 
+      'Formação': h.curso,
+      'Duração': duracao,
+      'Data': h.data, 
+      'Nota': h.nota,
+      'Certificado ID': h.certificadoId || '—'
+    };
+  });
+  
   downloadExcel(dados, 'historico_formacoes', 'Histórico');
 }
 
