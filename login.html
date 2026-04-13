@@ -60,6 +60,11 @@
       font-weight: normal;
       letter-spacing: normal;
     }
+
+    /* Esconder tabs - interface simplificada */
+    .login-tabs {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -75,42 +80,22 @@
       <div class="login-card-body">
         <h2>Plataforma de Formação</h2>
 
-        <div class="login-tabs">
-          <button class="login-tab active" data-tab="colaborador">👥 Colaborador</button>
-          <button class="login-tab" data-tab="admin">👑 Administrador</button>
-        </div>
-
         <div id="errmsg" class="errmsg"></div>
 
-        <div id="form-colab">
+        <!-- Formulário único para todos -->
+        <div id="form-login">
           <div class="fg">
             <label>Email ou Username</label>
-            <input type="text" id="c-email" placeholder="nome@email.pt ou username" autocomplete="username">
+            <input type="text" id="login-username" placeholder="nome@email.pt ou username" autocomplete="username">
           </div>
 
           <div class="fg">
             <label>Palavra-passe</label>
-            <input type="password" id="c-pass" placeholder="••••••••" autocomplete="current-password">
+            <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
           </div>
 
-          <button class="btnlogin" id="btn-colab">
+          <button class="btnlogin" id="btn-login">
             <i class="fas fa-sign-in-alt"></i> Entrar
-          </button>
-        </div>
-
-        <div id="form-admin" style="display:none">
-          <div class="fg">
-            <label>Utilizador</label>
-            <input type="text" id="a-user" value="admin" readonly style="background:#f5f5f5">
-          </div>
-
-          <div class="fg">
-            <label>Palavra-passe</label>
-            <input type="password" id="a-pass" placeholder="••••••••" autocomplete="current-password">
-          </div>
-
-          <button class="btnlogin" id="btn-admin">
-            <i class="fas fa-lock"></i> Entrar como Gestor
           </button>
         </div>
 
@@ -229,15 +214,9 @@
     })();
 
     const errMsgDiv = document.getElementById('errmsg');
-    const formColab = document.getElementById('form-colab');
-    const formAdmin = document.getElementById('form-admin');
-    const tabColab = document.querySelector('[data-tab="colaborador"]');
-    const tabAdmin = document.querySelector('[data-tab="admin"]');
-    const btnColab = document.getElementById('btn-colab');
-    const btnAdmin = document.getElementById('btn-admin');
-    const inputEmail = document.getElementById('c-email');
-    const inputPassColab = document.getElementById('c-pass');
-    const inputPassAdmin = document.getElementById('a-pass');
+    const btnLogin = document.getElementById('btn-login');
+    const inputUsername = document.getElementById('login-username');
+    const inputPassword = document.getElementById('login-password');
 
     let isLoggingIn = false;
 
@@ -260,76 +239,51 @@
       }
     }
 
-    async function handleLoginColaborador() {
+    async function handleLogin() {
       if (isLoggingIn) return;
 
-      const emailOuUser = inputEmail.value.trim();
-      const pass = inputPassColab.value;
+      const username = inputUsername.value.trim();
+      const pass = inputPassword.value;
 
-      if (!emailOuUser || !pass) {
+      if (!username || !pass) {
         return showError('Preencha todos os campos.');
       }
 
       isLoggingIn = true;
-      setLoading(btnColab, true);
+      setLoading(btnLogin, true);
 
       try {
-        const ok = await window.loginColaborador(emailOuUser, pass);
+        // Verificar se é admin (username = "admin")
+        if (username.toLowerCase() === 'admin') {
+          const ok = window.loginAdmin(pass);
+          if (ok) {
+            window.showToast('✅ Acesso de administrador concedido!');
+            setTimeout(() => location.href = 'admin.html', 800);
+          } else {
+            showError('Palavra-passe de administrador incorreta.');
+            inputPassword.value = '';
+          }
+          setLoading(btnLogin, false);
+          isLoggingIn = false;
+          return;
+        }
+
+        // Login como colaborador
+        const ok = await window.loginColaborador(username, pass);
         if (ok) {
           window.showToast('✅ Login efetuado com sucesso!');
           setTimeout(() => location.href = 'dashboard.html', 800);
         } else {
           showError('Credenciais inválidas. Verifique e tente novamente.');
-          inputPassColab.value = '';
+          inputPassword.value = '';
         }
       } catch (e) {
         console.error(e);
         showError('Erro ao iniciar sessão. Tente novamente.');
       }
 
-      setLoading(btnColab, false);
+      setLoading(btnLogin, false);
       isLoggingIn = false;
-    }
-
-    function handleLoginAdmin() {
-      if (isLoggingIn) return;
-
-      const pass = inputPassAdmin.value;
-      if (!pass) return showError('Insira a palavra-passe.');
-
-      isLoggingIn = true;
-      setLoading(btnAdmin, true);
-
-      setTimeout(() => {
-        const ok = window.loginAdmin(pass);
-        if (ok) {
-          window.showToast('✅ Acesso de administrador concedido!');
-          setTimeout(() => location.href = 'admin.html', 800);
-        } else {
-          showError('Palavra-passe incorreta.');
-          inputPassAdmin.value = '';
-        }
-        setLoading(btnAdmin, false);
-        isLoggingIn = false;
-      }, 250);
-    }
-
-    function switchToColab() {
-      tabColab.classList.add('active');
-      tabAdmin.classList.remove('active');
-      formColab.style.display = 'block';
-      formAdmin.style.display = 'none';
-      errMsgDiv.style.display = 'none';
-      inputEmail.focus();
-    }
-
-    function switchToAdmin() {
-      tabAdmin.classList.add('active');
-      tabColab.classList.remove('active');
-      formAdmin.style.display = 'block';
-      formColab.style.display = 'none';
-      errMsgDiv.style.display = 'none';
-      inputPassAdmin.focus();
     }
 
     // ==================== RECUPERAÇÃO DE PASSWORD (3 PASSOS) ====================
@@ -604,25 +558,18 @@
     window.closeForgotPasswordModal = closeForgotPasswordModal;
 
     // ==================== EVENT LISTENERS ====================
-    btnColab.onclick = handleLoginColaborador;
-    btnAdmin.onclick = handleLoginAdmin;
-    tabColab.onclick = switchToColab;
-    tabAdmin.onclick = switchToAdmin;
+    btnLogin.onclick = handleLogin;
 
-    inputEmail.addEventListener('keypress', e => {
-      if (e.key === 'Enter') inputPassColab.focus();
+    inputUsername.addEventListener('keypress', e => {
+      if (e.key === 'Enter') inputPassword.focus();
     });
 
-    inputPassColab.addEventListener('keypress', e => {
-      if (e.key === 'Enter') handleLoginColaborador();
-    });
-
-    inputPassAdmin.addEventListener('keypress', e => {
-      if (e.key === 'Enter') handleLoginAdmin();
+    inputPassword.addEventListener('keypress', e => {
+      if (e.key === 'Enter') handleLogin();
     });
 
     document.addEventListener('DOMContentLoaded', () => {
-      inputEmail.focus();
+      inputUsername.focus();
     });
   </script>
 </body>
