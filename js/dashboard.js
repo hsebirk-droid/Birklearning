@@ -151,44 +151,35 @@ function loadUserProgress() {
   const progressKey = getSessionProgressKey();
   console.log('🔑 Chave de progresso:', progressKey);
   
+  // 1. Carregar progresso salvo
   const saved = localStorage.getItem(progressKey);
-  console.log('📦 Progresso guardado:', saved);
-  
-  if (!saved) {
-    userProgress = {};
-    console.log('ℹ️ Nenhum progresso encontrado');
-    return;
-  }
-  
-  try {
-    userProgress = JSON.parse(saved);
-    console.log('✅ Progresso carregado:', userProgress);
-  } catch (e) {
-    console.error('❌ Erro ao carregar progresso:', e);
+  if (saved) {
+    try { userProgress = JSON.parse(saved); } catch(e) { userProgress = {}; }
+  } else {
     userProgress = {};
   }
   
-  // Também verificar progresso por curso individual
-  allCourses.forEach(curso => {
-    const progressoCurso = localStorage.getItem(`progresso_${curso.id}_${currentUser?.user || currentUser?.email}`);
-    if (progressoCurso) {
-      try {
-        const prog = JSON.parse(progressoCurso);
-        if (prog.quizPassed) {
-          if (!userProgress[curso.id]) {
-            userProgress[curso.id] = {};
-          }
-          userProgress[curso.id].completed = true;
-          userProgress[curso.id].modulesCompleted = curso.modulos?.length || 0;
-        }
-      } catch(e) {}
+  // 2. 🔥 NOVO: Verificar históricos globais
+  const historicos = JSON.parse(localStorage.getItem('historicos') || '[]');
+  const meusHistoricos = historicos.filter(h => 
+    h.nome === currentUser?.user || 
+    h.nomeDisplay === currentUser?.name || 
+    h.email === currentUser?.email
+  );
+  
+  // 3. Marcar como concluído no userProgress
+  meusHistoricos.forEach(h => {
+    if (h.cursoId) {
+      if (!userProgress[h.cursoId]) userProgress[h.cursoId] = {};
+      userProgress[h.cursoId].completed = true;
+      userProgress[h.cursoId].completedAt = h.data;
     }
   });
   
-  // Guardar o progresso consolidado
+  // 4. Guardar consolidado
   localStorage.setItem(progressKey, JSON.stringify(userProgress));
+  console.log('✅ Progresso consolidado:', userProgress);
 }
-
 function calculateCourseProgress(curso) {
   if (!curso || !curso.id) return 0;
   
