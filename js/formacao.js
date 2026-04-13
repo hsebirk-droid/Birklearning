@@ -90,24 +90,21 @@ async function lerTokenUrl() {
     
     console.log("🔑 Token:", tokenId);
     
-    const savedTokenData = localStorage.getItem(`token_${tokenId}`);
-    if (savedTokenData) {
-        try { return JSON.parse(savedTokenData); } catch(e) {}
-    }
-    
+    // 🔥 LER APENAS DO FIRESTORE
     if (window.firebaseReady && window.db) {
         try {
             const doc = await window.db.collection('tokens').doc(tokenId).get();
             if (doc.exists) {
                 const data = doc.data();
-                localStorage.setItem(`token_${tokenId}`, JSON.stringify(data));
-                console.log("✅ Token carregado do Firestore");
+                console.log("☁️ Token carregado do Firestore");
                 return data;
             }
-        } catch(e) { console.warn("Erro ao carregar do Firestore:", e); }
+        } catch(e) { 
+            console.error("❌ Erro ao carregar do Firestore:", e); 
+        }
     }
     
-    console.error("❌ Token inválido ou expirado");
+    console.error("❌ Token não encontrado no Firestore");
     return null;
 }
 
@@ -202,6 +199,34 @@ async function carregarFormacao(id) {
 }
 
 async function carregarPrazoAtribuicao() {
+  // 1. Tentar carregar do Firestore primeiro
+  if (window.firebaseReady && window.db) {
+    try {
+      const snapshot = await window.db.collection('atribuicoes')
+        .where('cursoId', '==', cursoId)
+        .get();
+      
+      const atribuicoesFirestore = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      atribuicaoAtual = atribuicoesFirestore.find(a => 
+        (a.colaboradorUser === nomeUser || a.colaboradorEmail === userEmail)
+      );
+      
+      if (atribuicaoAtual) {
+        console.log('☁️ Atribuição carregada do Firestore');
+        if (atribuicaoAtual.prazo) {
+          document.getElementById('prazo-data').textContent = atribuicaoAtual.prazo;
+        } else {
+          document.getElementById('prazo-data').textContent = 'Não definido';
+        }
+        return;
+      }
+    } catch (error) {
+      console.warn('⚠️ Erro ao carregar atribuição do Firestore:', error);
+    }
+  }
+  
+  // 2. Fallback para localStorage
   const atribuicoes = JSON.parse(localStorage.getItem('atribuicoes') || '[]');
   atribuicaoAtual = atribuicoes.find(a => 
     (a.colaboradorUser === nomeUser || a.colaboradorEmail === userEmail) && 
