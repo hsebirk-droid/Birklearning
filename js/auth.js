@@ -1,5 +1,5 @@
 // ============================================
-// AUTH - GESTÃO DE AUTENTICAÇÃO
+// AUTH - GESTÃO DE AUTENTICAÇÃO (VERSÃO CORRIGIDA)
 // ============================================
 
 function getAdminPassword() {
@@ -377,12 +377,40 @@ async function verifyEmailForRecovery(email) {
     return { success: false, message: 'Por favor, insira um email.' };
   }
   
-  const colaboradores = await carregarColaboradores();
-  const colaborador = colaboradores.find(c => 
-    String(c.email || '').toLowerCase() === email.toLowerCase()
-  );
+  console.log('🔍 Verificando email para recuperação:', email);
+  
+  let colaborador = null;
+  
+  // 1. Tentar encontrar no Firestore primeiro
+  if (window.firebaseReady && window.db) {
+    try {
+      const snapshot = await window.db.collection('colaboradores')
+        .where('email', '==', email.toLowerCase())
+        .get();
+      
+      if (!snapshot.empty) {
+        const doc = snapshot.docs[0];
+        colaborador = { id: doc.id, ...doc.data() };
+        console.log('✅ Colaborador encontrado no Firestore:', colaborador.nome);
+      }
+    } catch (error) {
+      console.warn('⚠️ Erro ao buscar no Firestore:', error);
+    }
+  }
+  
+  // 2. Se não encontrou no Firestore, tentar localStorage
+  if (!colaborador) {
+    const colaboradores = await carregarColaboradores();
+    colaborador = colaboradores.find(c => 
+      String(c.email || '').toLowerCase() === email.toLowerCase()
+    );
+    if (colaborador) {
+      console.log('📦 Colaborador encontrado no localStorage:', colaborador.nome);
+    }
+  }
   
   if (!colaborador) {
+    console.log('❌ Email não encontrado:', email);
     return { success: false, message: 'Email não encontrado na base de dados.' };
   }
   
@@ -405,10 +433,33 @@ async function verifyMatriculaForRecovery(email, matricula) {
     return { success: false, message: 'A matrícula deve conter apenas números.' };
   }
   
-  const colaboradores = await carregarColaboradores();
-  const colaborador = colaboradores.find(c => 
-    String(c.email || '').toLowerCase() === email.toLowerCase()
-  );
+  console.log('🔍 Verificando matrícula para:', email);
+  
+  let colaborador = null;
+  
+  // 1. Buscar no Firestore
+  if (window.firebaseReady && window.db) {
+    try {
+      const snapshot = await window.db.collection('colaboradores')
+        .where('email', '==', email.toLowerCase())
+        .get();
+      
+      if (!snapshot.empty) {
+        const doc = snapshot.docs[0];
+        colaborador = { id: doc.id, ...doc.data() };
+      }
+    } catch (error) {
+      console.warn('⚠️ Erro ao buscar no Firestore:', error);
+    }
+  }
+  
+  // 2. Fallback localStorage
+  if (!colaborador) {
+    const colaboradores = await carregarColaboradores();
+    colaborador = colaboradores.find(c => 
+      String(c.email || '').toLowerCase() === email.toLowerCase()
+    );
+  }
   
   if (!colaborador) {
     return { success: false, message: 'Email não encontrado.' };
@@ -439,30 +490,61 @@ async function saveNewPassword(email, newPassword) {
     return { success: false, message: 'A password deve ter pelo menos 6 caracteres.' };
   }
   
+  console.log('🔐 Atualizando password para:', email);
+  
+  let updated = false;
+  let colaboradorId = null;
+  
+  // 1. Atualizar no Firestore
+  if (window.firebaseReady && window.db) {
+    try {
+      const snapshot = await window.db.collection('colaboradores')
+        .where('email', '==', email.toLowerCase())
+        .get();
+      
+      if (!snapshot.empty) {
+        const doc = snapshot.docs[0];
+        colaboradorId = doc.id;
+        
+        await window.db.collection('colaboradores').doc(doc.id).update({
+          pass: newPassword,
+          updatedAt: new Date().toISOString()
+        });
+        
+        console.log('✅ Password atualizada no Firestore');
+        updated = true;
+      }
+    } catch (error) {
+      console.warn('⚠️ Erro ao atualizar Firestore:', error);
+    }
+  }
+  
+  // 2. Atualizar no localStorage
   const colaboradores = await carregarColaboradores();
   const index = colaboradores.findIndex(c => 
     String(c.email || '').toLowerCase() === email.toLowerCase()
   );
   
-  if (index === -1) {
-    return { success: false, message: 'Colaborador não encontrado.' };
+  if (index !== -1) {
+    colaboradores[index].pass = newPassword;
+    localStorage.setItem('colaboradores', JSON.stringify(colaboradores));
+    console.log('✅ Password atualizada no localStorage');
+    updated = true;
+  } else if (colaboradorId) {
+    // Se não estava no localStorage mas estava no Firestore, adicionar
+    const novoColab = {
+      id: colaboradorId,
+      email: email.toLowerCase(),
+      pass: newPassword,
+      updatedAt: new Date().toISOString()
+    };
+    colaboradores.push(novoColab);
+    localStorage.setItem('colaboradores', JSON.stringify(colaboradores));
+    updated = true;
   }
   
-  // Atualizar password no localStorage
-  colaboradores[index].pass = newPassword;
-  localStorage.setItem('colaboradores', JSON.stringify(colaboradores));
-  
-  // Atualizar no Firestore se disponível
-  if (window.firebaseReady && window.db) {
-    try {
-      const colaborador = colaboradores[index];
-      await window.db.collection('colaboradores').doc(colaborador.id).update({
-        pass: newPassword
-      });
-      console.log('☁️ Password atualizada no Firestore');
-    } catch (error) {
-      console.warn('⚠️ Erro ao atualizar Firestore:', error);
-    }
+  if (!updated) {
+    return { success: false, message: 'Colaborador não encontrado.' };
   }
   
   return { success: true, message: 'Password atualizada com sucesso!' };
@@ -484,4 +566,4 @@ window.verifyEmailForRecovery = verifyEmailForRecovery;
 window.verifyMatriculaForRecovery = verifyMatriculaForRecovery;
 window.saveNewPassword = saveNewPassword;
 
-console.log('✅ auth.js carregado com sucesso');
+console.log('✅ auth.js carregado com sucesso - versão corrigida');
