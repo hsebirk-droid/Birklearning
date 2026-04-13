@@ -348,11 +348,22 @@ function carregarConteudoModulo(module, moduleIdStr) {
       window.showToast('✅ Conteúdo visualizado! Pode confirmar a conclusão.');
     }), 100);
   } else if (module.tipo === 'video') {
+    // ✅ MELHORADO: 30 segundos ou pelo menos 25% da duração estimada
+    // Tenta extrair duração do módulo (ex: "15 min" -> 15)
+    let duracaoMinutos = 5; // padrão 5 minutos
+    const duracaoStr = module.duracao || '';
+    const match = duracaoStr.match(/(\d+)/);
+    if (match) {
+      duracaoMinutos = parseInt(match[1]) || 5;
+    }
+    // Aguardar pelo menos 2 minutos ou 30% da duração, o que for menor
+    const tempoEspera = Math.min(Math.max(duracaoMinutos * 60 * 0.3, 30), 120) * 1000;
+    
     setTimeout(() => {
       if (btn) btn.disabled = false;
       window.showToast('✅ Pode confirmar a conclusão do módulo.');
-    }, 5000);
-  } else {
+    }, tempoEspera);
+} else {
     setTimeout(() => {
       if (btn) btn.disabled = false;
     }, 30000);
