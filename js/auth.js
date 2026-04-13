@@ -78,47 +78,111 @@ async function loginColaborador(emailOuUser, pass) {
   const identifier = String(emailOuUser || '').trim().toLowerCase();
   if (!identifier || !pass) return false;
 
-  // Tentar login Firebase primeiro
-  if (window.firebaseReady && window.auth && identifier.includes('@')) {
+  console.log('🔍 Tentando login:', identifier);
+  
+  // 1. Tentar login via Firebase Authentication (método principal)
+  if (window.firebaseReady && window.auth) {
     try {
-      const cred = await window.auth.signInWithEmailAndPassword(identifier, pass);
-      const firebaseUser = cred.user;
-      const email = firebaseUser.email.toLowerCase();
-
-      if (window.isAdminEmail(email)) {
-        persistAdminSession(firebaseUser.displayName || 'Administrador', email);
-        return true;
-      }
-
-      // Verificar se colaborador existe
-      const colaboradores = await carregarColaboradores();
-      let found = colaboradores.find(c => String(c.email || '').toLowerCase() === email);
+      // Determinar se é email ou username
+      let email = identifier;
       
-      if (!found) {
-        found = {
-          id: firebaseUser.uid,
-          matricula: '',
-          user: generateUsername(firebaseUser.displayName, email),
-          nome: firebaseUser.displayName || email.split('@')[0],
-          email: email,
-          dataCriacao: new Date().toISOString()
-        };
-        await guardarColaboradorFirestore(found);
-        const cols = await carregarColaboradores();
-        if (!cols.find(c => c.email === email)) {
-          cols.push(found);
-          localStorage.setItem('colaboradores', JSON.stringify(cols));
+      // Se não for email, procurar o email no Firestore/localStorage
+      if (!identifier.includes('@')) {
+        const colaboradores = await carregarColaboradores();
+        const found = colaboradores.find(c => 
+          String(c.user || '').toLowerCase() === identifier
+        );
+        if (found && found.email) {
+          email = found.email;
+          console.log('📧 Email encontrado para username:', email);
+        } else {
+          console.log('❌ Username não encontrado');
+          return false;
         }
       }
-
-      persistCollaboratorSession(found);
+      
+      // Login no Firebase Auth
+      console.log('🔥 Tentando Firebase Auth com:', email);
+      const cred = await window.auth.signInWithEmailAndPassword(email, pass);
+      const firebaseUser = cred.user;
+      console.log('✅ Firebase Auth sucesso:', firebaseUser.email);
+      
+      // Verificar se é admin
+      if (window.isAdminEmail && window.isAdminEmail(firebaseUser.email)) {
+        console.log('👑 Login como Administrador');
+        persistAdminSession(firebaseUser.displayName || 'Administrador', firebaseUser.email);
+        return true;
+      }
+      
+      // Buscar dados do colaborador no Firestore
+      let colaborador = null;
+      if (window.db) {
+        try {
+          const doc = await window.db.collection('colaboradores').doc(firebaseUser.uid).get();
+          if (doc.exists) {
+            colaborador = { id: doc.id, ...doc.data() };
+            console.log('✅ Colaborador encontrado no Firestore:', colaborador.nome);
+          }
+        } catch (e) {
+          console.warn('⚠️ Erro ao buscar do Firestore:', e);
+        }
+      }
+      
+      // Se não encontrou no Firestore, procurar no localStorage
+      if (!colaborador) {
+        const colaboradores = await carregarColaboradores();
+        colaborador = colaboradores.find(c => 
+          String(c.email || '').toLowerCase() === firebaseUser.email.toLowerCase()
+        );
+        if (colaborador) {
+          console.log('📦 Colaborador encontrado no localStorage:', colaborador.nome);
+        }
+      }
+      
+      // Se ainda não encontrou, criar registo básico
+      if (!colaborador) {
+        console.log('📝 Criando registo básico para:', firebaseUser.email);
+        colaborador = {
+          id: firebaseUser.uid,
+          matricula: '',
+          user: email.split('@')[0],
+          nome: firebaseUser.displayName || email.split('@')[0],
+          email: firebaseUser.email,
+          dataCriacao: new Date().toISOString()
+        };
+        
+        // Guardar no Firestore
+        if (window.db) {
+          try {
+            await window.db.collection('colaboradores').doc(firebaseUser.uid).set(colaborador);
+          } catch (e) {
+            console.warn('⚠️ Erro ao guardar no Firestore:', e);
+          }
+        }
+      }
+      
+      console.log('✅ Login colaborador sucesso:', colaborador.nome);
+      persistCollaboratorSession(colaborador);
       return true;
+      
     } catch (error) {
-      console.warn('Login Firebase falhou:', error.message);
+      console.warn('❌ Firebase Auth falhou:', error.code, error.message);
+      
+      // Erros específicos - retornar false para credenciais inválidas
+      if (error.code === 'auth/user-not-found' || 
+          error.code === 'auth/wrong-password' ||
+          error.code === 'auth/invalid-email' ||
+          error.code === 'auth/invalid-login-credentials') {
+        return false;
+      }
+      
+      // Outros erros - tentar fallback local
+      console.log('📦 Tentando fallback local devido a erro...');
     }
   }
-
-  // Fallback para login local
+  
+  // 2. Fallback: Login local (offline ou Firebase indisponível)
+  console.log('📦 A usar login local (fallback)...');
   const colaboradores = await carregarColaboradores();
   const found = colaboradores.find(c => {
     const user = String(c.user || '').toLowerCase();
@@ -126,7 +190,12 @@ async function loginColaborador(emailOuUser, pass) {
     return (user === identifier || email === identifier) && c.pass === pass;
   });
 
-  if (!found) return false;
+  if (!found) {
+    console.log('❌ Credenciais não encontradas localmente');
+    return false;
+  }
+  
+  console.log('✅ Login local sucesso:', found.nome);
   persistCollaboratorSession(found);
   return true;
 }
