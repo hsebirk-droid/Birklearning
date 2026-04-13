@@ -804,30 +804,77 @@ async function saveUser() {
   }
 }
 
-function importColaboradores(files) {
+async function importColaboradores(files) {
   if (!files || !files[0]) return;
+  
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = async function(e) {
     const lines = e.target.result.split('\n');
     let imported = 0;
+    let errors = 0;
+    
+    showToast('⏳ A importar colaboradores...');
+    
     for (let i = 1; i < lines.length; i++) {
       const parts = lines[i].split(',');
-      if (parts.length >= 2) {
+      if (parts.length >= 4) {
         const matricula = parts[0]?.trim() || '';
         const nome = parts[1]?.trim() || '';
         const email = parts[2]?.trim() || '';
         const pass = parts[3]?.trim() || 'birkenstock2024';
-        const user = nome.toLowerCase().replace(/\s+/g, '.');
-        if (nome && pass) {
-          colaboradores.push({ id: Date.now().toString() + imported, matricula, user, nome, email, pass, dataCriacao: new Date().toISOString() });
-          imported++;
+        
+        if (nome && email && pass) {
+          try {
+            let firebaseUid = null;
+            
+            if (window.firebaseReady && window.auth) {
+              try {
+                const userCredential = await window.auth.createUserWithEmailAndPassword(email, pass);
+                firebaseUid = userCredential.user.uid;
+              } catch (authError) {
+                if (authError.code === 'auth/email-already-in-use') {
+                  console.log('⚠️ Email já existe:', email);
+                } else {
+                  throw authError;
+                }
+              }
+            }
+            
+            const user = email.split('@')[0].toLowerCase();
+            const novoColab = { 
+              id: firebaseUid || Date.now().toString() + '_' + i, 
+              matricula, user, nome, email, pass,
+              dataCriacao: new Date().toISOString()
+            };
+            
+            if (window.firebaseReady && window.db) {
+              await window.db.collection('colaboradores').doc(novoColab.id).set(novoColab);
+            }
+            
+            colaboradores.push(novoColab);
+            imported++;
+            
+          } catch (error) {
+            errors++;
+            console.error(`Erro ao importar ${email}:`, error);
+          }
         }
       }
     }
+    
+    localStorage.setItem('colaboradores', JSON.stringify(colaboradores));
     salvarColaboradores();
-    showToast(`✅ Importados ${imported} colaboradores!`);
-    renderColabs(); atualizarSelectores(); atualizarDashboard(); renderAcompanhamento();
+    
+    renderColabs(); 
+    atualizarSelectores(); 
+    atualizarDashboard(); 
+    renderAcompanhamento();
+    
+    let msg = `✅ Importados ${imported} colaboradores!`;
+    if (errors > 0) msg += ` ${errors} erros.`;
+    showToast(msg);
   };
+  
   reader.readAsText(files[0], 'UTF-8');
 }
 
