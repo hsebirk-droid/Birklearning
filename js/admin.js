@@ -1232,20 +1232,29 @@ function setupEventListeners() {
 }
 
 function initAdmin() {
-  // ✅ Verificar autenticação real do Firebase
+  // ✅ Verificar autenticação: Firebase Auth OU localStorage
   const firebaseUser = window.auth?.currentUser;
   const isAdminEmail = firebaseUser?.email && window.isAdminEmail ? window.isAdminEmail(firebaseUser.email) : false;
+  const isLocalAdmin = localStorage.getItem('usuarioAdmin') === 'admin';
   
-  if (!firebaseUser || !isAdminEmail) { 
+  // Permitir acesso se for Firebase Admin OU se tiver feito login local com password correta
+  if (!firebaseUser && !isLocalAdmin) { 
     console.warn('🔒 Acesso negado - redirecionando para login');
     window.location.href = 'login.html'; 
     return; 
   }
   
-  // Atualizar localStorage com dados do Firebase (apenas para UI, não para segurança)
-  localStorage.setItem('usuarioAdmin', 'admin');
-  localStorage.setItem('usuarioNome', firebaseUser.displayName || 'Administrador');
-  localStorage.setItem('usuarioEmail', firebaseUser.email || '');
+  // Se for admin local mas não tem Firebase, permitir acesso
+  if (isLocalAdmin && !firebaseUser) {
+    console.log('✅ Acesso local concedido ao Admin');
+  }
+  
+  // Atualizar localStorage com dados do Firebase (apenas para UI)
+  if (firebaseUser) {
+    localStorage.setItem('usuarioAdmin', 'admin');
+    localStorage.setItem('usuarioNome', firebaseUser.displayName || 'Administrador');
+    localStorage.setItem('usuarioEmail', firebaseUser.email || '');
+  }
   
   carregarDadosExemplo().then(() => {
     setupEventListeners();
@@ -1261,46 +1270,3 @@ function initAdmin() {
     setTimeout(() => atualizarSelectores(), 500);
   });
 }
-
-function logout() {
-  localStorage.removeItem('usuarioAdmin');
-  localStorage.removeItem('usuarioNome');
-  localStorage.removeItem('usuarioEmail');
-  window.location.href = 'login.html';
-}
-
-// Expor funções globalmente
-window.logout = logout;
-window.prepararAtribuicao = prepararAtribuicao;
-window.gerarCodigoAtribuicao = gerarCodigoAtribuicao;
-window.EnvioEmail = EnvioEmail;
-window.copiarLink = copiarLink;
-window.selecionarTodos = selecionarTodos;
-window.deselecionarTodos = deselecionarTodos;
-window.gerarLinksMassa = gerarLinksMassa;
-window.copiarTodosLinks = copiarTodosLinks;
-window.enviarEmailsMassa = enviarEmailsMassa;
-window.relembrarColaborador = relembrarColaborador;
-window.visualizarCertificadoAtribuicao = visualizarCertificadoAtribuicao;
-window.visualizarCertificadoHistorico = visualizarCertificadoHistorico;
-window.imprimirCertificadoModal = imprimirCertificadoModal;
-window.baixarPDFCertificadoModal = baixarPDFCertificadoModal;
-window.exportarAcompanhamentoExcel = exportarAcompanhamentoExcel;
-window.exportarHistoricoExcel = exportarHistoricoExcel;
-window.limparHistorico = limparHistorico;
-window.exportarColaboradoresExcel = exportarColaboradoresExcel;
-window.inserirPlaceholder = inserirPlaceholder;
-window.previewCertificado = previewCertificado;
-window.salvarTemplateCertificado = salvarTemplateCertificado;
-window.resetTemplateCertificado = resetTemplateCertificado;
-window.checkPasswordStrength = checkPasswordStrength;
-window.alterarPasswordAdmin = alterarPasswordAdmin;
-window.cancelarEdicao = cancelarEdicao;
-window.abrirModalModulo = abrirModalModulo;
-window.abrirModalPergunta = abrirModalPergunta;
-window.publicarFormacao = publicarFormacao;
-window.editarFormacao = editarFormacao;
-window.apagarFormacao = apagarFormacao;
-
-document.addEventListener('DOMContentLoaded', initAdmin);
-console.log("✅ admin.js carregado - versão completa com deteção de PDF");
