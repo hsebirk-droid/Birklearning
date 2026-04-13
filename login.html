@@ -16,6 +16,38 @@
   <link rel="stylesheet" href="css/login.css">
   
   <style>
+    /* Estilos para o botão de mostrar/ocultar password */
+    .password-input-wrapper {
+      position: relative;
+      width: 100%;
+    }
+    
+    .password-input-wrapper input {
+      width: 100%;
+      padding-right: 45px !important;
+    }
+    
+    .toggle-password {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--birkenstock-gray);
+      cursor: pointer;
+      font-size: 18px;
+      padding: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
+    }
+    
+    .toggle-password:hover {
+      color: var(--birkenstock-blue);
+    }
+    
     /* Estilos específicos para recuperação */
     #recovery-password-strength {
       height: 4px;
@@ -91,7 +123,12 @@
 
           <div class="fg">
             <label>Palavra-passe</label>
-            <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+            <div class="password-input-wrapper">
+              <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+              <button type="button" class="toggle-password" onclick="togglePassword('login-password', this)">
+                <i class="far fa-eye"></i>
+              </button>
+            </div>
           </div>
 
           <button class="btnlogin" id="btn-login">
@@ -168,12 +205,22 @@
           </p>
           <div class="fg">
             <label>Nova Password</label>
-            <input type="password" id="recovery-new-password" placeholder="••••••••" autocomplete="new-password">
+            <div class="password-input-wrapper">
+              <input type="password" id="recovery-new-password" placeholder="••••••••" autocomplete="new-password">
+              <button type="button" class="toggle-password" onclick="togglePassword('recovery-new-password', this)">
+                <i class="far fa-eye"></i>
+              </button>
+            </div>
             <div id="recovery-password-strength" class="password-strength"></div>
           </div>
           <div class="fg">
             <label>Confirmar Password</label>
-            <input type="password" id="recovery-confirm-password" placeholder="••••••••" autocomplete="new-password">
+            <div class="password-input-wrapper">
+              <input type="password" id="recovery-confirm-password" placeholder="••••••••" autocomplete="new-password">
+              <button type="button" class="toggle-password" onclick="togglePassword('recovery-confirm-password', this)">
+                <i class="far fa-eye"></i>
+              </button>
+            </div>
           </div>
           <div id="recovery-message-3" style="margin-bottom: 16px;"></div>
           <button class="btnlogin" id="btn-save-password">
@@ -202,6 +249,24 @@
   <script src="js/auth.js"></script>
 
   <script>
+    // ==================== FUNÇÃO PARA MOSTRAR/OCULTAR PASSWORD ====================
+    function togglePassword(inputId, button) {
+      const input = document.getElementById(inputId);
+      const icon = button.querySelector('i');
+      
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+      }
+    }
+    
+    window.togglePassword = togglePassword;
+
     // ==================== VERIFICAR TOKEN E REDIRECIONAR ====================
     (async function checkTokenAndRedirect() {
       const urlParams = new URLSearchParams(window.location.search);
@@ -240,62 +305,58 @@
     }
 
     async function handleLogin() {
-  if (isLoggingIn) return;
+      if (isLoggingIn) return;
 
-  const username = inputUsername.value.trim();
-  const pass = inputPassword.value;
+      const username = inputUsername.value.trim();
+      const pass = inputPassword.value;
 
-  if (!username || !pass) {
-    return showError('Preencha todos os campos.');
-  }
+      if (!username || !pass) {
+        return showError('Preencha todos os campos.');
+      }
 
-  isLoggingIn = true;
-  setLoading(btnLogin, true);
+      isLoggingIn = true;
+      setLoading(btnLogin, true);
 
-  try {
-    // 🔥 Verificar se é admin (username = "admin")
-    if (username.toLowerCase() === 'admin') {
-      // Fazer login no Firebase Auth com o email do admin
-      const adminEmail = 'hsebirk@gmail.com'; // ⚠️ ALTERE para o seu email de admin
-      
       try {
-        // Tentar login via Firebase Auth
-        const ok = await window.loginColaborador(adminEmail, pass);
+        if (username.toLowerCase() === 'admin') {
+          const adminEmail = 'hsebirk@gmail.com';
+          
+          try {
+            const ok = await window.loginColaborador(adminEmail, pass);
+            if (ok) {
+              window.showToast('✅ Acesso de administrador concedido!');
+              setTimeout(() => location.href = 'admin.html', 800);
+            } else {
+              showError('Palavra-passe de administrador incorreta.');
+              inputPassword.value = '';
+            }
+          } catch (e) {
+            console.error('Erro no login admin:', e);
+            showError('Erro no login. Verifique as credenciais.');
+            inputPassword.value = '';
+          }
+          
+          setLoading(btnLogin, false);
+          isLoggingIn = false;
+          return;
+        }
+
+        const ok = await window.loginColaborador(username, pass);
         if (ok) {
-          window.showToast('✅ Acesso de administrador concedido!');
-          setTimeout(() => location.href = 'admin.html', 800);
+          window.showToast('✅ Login efetuado com sucesso!');
+          setTimeout(() => location.href = 'dashboard.html', 800);
         } else {
-          showError('Palavra-passe de administrador incorreta.');
+          showError('Credenciais inválidas. Verifique e tente novamente.');
           inputPassword.value = '';
         }
       } catch (e) {
-        console.error('Erro no login admin:', e);
-        showError('Erro no login. Verifique as credenciais.');
-        inputPassword.value = '';
+        console.error(e);
+        showError('Erro ao iniciar sessão. Tente novamente.');
       }
-      
+
       setLoading(btnLogin, false);
       isLoggingIn = false;
-      return;
     }
-
-    // Login como colaborador
-    const ok = await window.loginColaborador(username, pass);
-    if (ok) {
-      window.showToast('✅ Login efetuado com sucesso!');
-      setTimeout(() => location.href = 'dashboard.html', 800);
-    } else {
-      showError('Credenciais inválidas. Verifique e tente novamente.');
-      inputPassword.value = '';
-    }
-  } catch (e) {
-    console.error(e);
-    showError('Erro ao iniciar sessão. Tente novamente.');
-  }
-
-  setLoading(btnLogin, false);
-  isLoggingIn = false;
-}
 
     // ==================== RECUPERAÇÃO DE PASSWORD (3 PASSOS) ====================
     const forgotPasswordLink = document.getElementById('forgotPasswordLink');
