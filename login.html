@@ -240,51 +240,62 @@
     }
 
     async function handleLogin() {
-      if (isLoggingIn) return;
+  if (isLoggingIn) return;
 
-      const username = inputUsername.value.trim();
-      const pass = inputPassword.value;
+  const username = inputUsername.value.trim();
+  const pass = inputPassword.value;
 
-      if (!username || !pass) {
-        return showError('Preencha todos os campos.');
-      }
+  if (!username || !pass) {
+    return showError('Preencha todos os campos.');
+  }
 
-      isLoggingIn = true;
-      setLoading(btnLogin, true);
+  isLoggingIn = true;
+  setLoading(btnLogin, true);
 
+  try {
+    // 🔥 Verificar se é admin (username = "admin")
+    if (username.toLowerCase() === 'admin') {
+      // Fazer login no Firebase Auth com o email do admin
+      const adminEmail = 'hsebirk@gmail.com'; // ⚠️ ALTERE para o seu email de admin
+      
       try {
-        // Verificar se é admin (username = "admin")
-        if (username.toLowerCase() === 'admin') {
-          const ok = window.loginAdmin(pass);
-          if (ok) {
-            window.showToast('✅ Acesso de administrador concedido!');
-            setTimeout(() => location.href = 'admin.html', 800);
-          } else {
-            showError('Palavra-passe de administrador incorreta.');
-            inputPassword.value = '';
-          }
-          setLoading(btnLogin, false);
-          isLoggingIn = false;
-          return;
-        }
-
-        // Login como colaborador
-        const ok = await window.loginColaborador(username, pass);
+        // Tentar login via Firebase Auth
+        const ok = await window.loginColaborador(adminEmail, pass);
         if (ok) {
-          window.showToast('✅ Login efetuado com sucesso!');
-          setTimeout(() => location.href = 'dashboard.html', 800);
+          window.showToast('✅ Acesso de administrador concedido!');
+          setTimeout(() => location.href = 'admin.html', 800);
         } else {
-          showError('Credenciais inválidas. Verifique e tente novamente.');
+          showError('Palavra-passe de administrador incorreta.');
           inputPassword.value = '';
         }
       } catch (e) {
-        console.error(e);
-        showError('Erro ao iniciar sessão. Tente novamente.');
+        console.error('Erro no login admin:', e);
+        showError('Erro no login. Verifique as credenciais.');
+        inputPassword.value = '';
       }
-
+      
       setLoading(btnLogin, false);
       isLoggingIn = false;
+      return;
     }
+
+    // Login como colaborador
+    const ok = await window.loginColaborador(username, pass);
+    if (ok) {
+      window.showToast('✅ Login efetuado com sucesso!');
+      setTimeout(() => location.href = 'dashboard.html', 800);
+    } else {
+      showError('Credenciais inválidas. Verifique e tente novamente.');
+      inputPassword.value = '';
+    }
+  } catch (e) {
+    console.error(e);
+    showError('Erro ao iniciar sessão. Tente novamente.');
+  }
+
+  setLoading(btnLogin, false);
+  isLoggingIn = false;
+}
 
     // ==================== RECUPERAÇÃO DE PASSWORD (3 PASSOS) ====================
     const forgotPasswordLink = document.getElementById('forgotPasswordLink');
