@@ -51,19 +51,30 @@
       <button class="admin-tab" data-tab="seguranca">🔒 Segurança</button>
     </div>
 
+    <!-- ========== DASHBOARD ========== -->
     <div id="sec-overview" class="sec active">
       <div class="sec-head">
         <h2>📊 Dashboard</h2>
       </div>
       <div class="sec-body">
         <div class="dashboard-grid" id="dashboard-grid"></div>
+        
         <div class="sec-head" style="margin-top: 32px;">
           <h2>📋 Atividades Recentes</h2>
         </div>
         <div id="recent-activities" class="item-list"></div>
+        
+        <!-- 🔥 PRAZOS A TERMINAR - DENTRO DO SEC-OVERVIEW -->
+        <div class="sec-head" style="margin-top: 32px; background: var(--warning);">
+          <h2>⏰ Prazos a Terminar</h2>
+        </div>
+        <div class="sec-body" style="padding: 0;">
+          <div id="prazos-proximos" class="item-list"></div>
+        </div>
       </div>
     </div>
 
+    <!-- ========== FORMAÇÕES ========== -->
     <div id="sec-formacoes" class="sec">
       <div class="sec-head">
         <h2>📚 Criar / Editar Formação</h2>
@@ -79,7 +90,18 @@
         </div>
         <div class="fg">
           <label>Conteúdo Programático</label>
-          <textarea id="f-descricao" rows="5" placeholder="Descreva o conteúdo programático da formação..."></textarea>
+          <textarea id="f-descricao" rows="6" placeholder="Descreva o conteúdo programático da formação...
+          
+Dica: Coloque cada tópico numa linha separada para melhor visualização.
+
+Exemplo:
+- Regras Gerais e Deveres
+- Política de Segurança
+- EPI: uso e manutenção
+- Procedimentos em acidente"></textarea>
+          <small style="color: var(--info); margin-top: 6px; display: block;">
+            <i class="fas fa-info-circle"></i> Coloque cada tópico numa linha separada (Enter) para melhor formatação.
+          </small>
         </div>
         
         <div class="sec-head" style="margin-top: 24px; background: var(--info);">
@@ -113,6 +135,7 @@
       </div>
     </div>
 
+    <!-- ========== COLABORADORES ========== -->
     <div id="sec-colaboradores" class="sec">
       <div class="sec-head">
         <h2>👥 Gestão de Colaboradores</h2>
@@ -241,6 +264,7 @@
       </div>
     </div>
 
+    <!-- ========== ACOMPANHAR ========== -->
     <div id="sec-acompanhar" class="sec">
       <div class="sec-head">
         <h2>📈 Acompanhamento</h2>
@@ -261,6 +285,7 @@
       </div>
     </div>
 
+    <!-- ========== HISTÓRICO ========== -->
     <div id="sec-historico" class="sec">
       <div class="sec-head">
         <h2>📜 Histórico de Formações</h2>
@@ -282,6 +307,7 @@
       </div>
     </div>
 
+    <!-- ========== CERTIFICADO ========== -->
     <div id="sec-certificado" class="sec">
       <div class="sec-head">
         <h2>🎓 Personalizar Certificado</h2>
@@ -325,6 +351,7 @@ Emitido em {{data}}.</textarea>
       </div>
     </div>
 
+    <!-- ========== SEGURANÇA ========== -->
     <div id="sec-seguranca" class="sec">
       <div class="sec-head">
         <h2>🔒 Segurança</h2>
@@ -385,7 +412,6 @@ Emitido em {{data}}.</textarea>
           </small>
         </div>
         
-        <!-- Botão para detetar páginas automaticamente -->
         <div style="margin-bottom: 16px;">
           <button type="button" class="btn-sm" id="btn-detectar-paginas" style="background: var(--info);">
             <i class="fas fa-magic"></i> Detetar número de páginas automaticamente
