@@ -916,6 +916,7 @@ function visualizarCertificadoAtribuicao(atribuicaoId) {
   if (!registro) { showToast('❌ Certificado não encontrado.'); return; }
   const formacao = formacoes.find(f => f.id === atribuicao.cursoId);
   const conteudoProgramatico = formacao?.conteudoProgramatico || formacao?.descricao || 'Conteúdo não especificado';
+  const duracaoFormacao = formacao?.duracao || '—';
   const certId = registro.certificadoId || gerarCertificadoId();
   const fundoImagem = certTemplate.fundoImagem || 'assets/fundo_certificado.png';
   const certHtml = `
@@ -928,8 +929,9 @@ function visualizarCertificadoAtribuicao(atribuicaoId) {
           <div style="font-size:0.9rem;font-weight:700;color:#00338D;margin-bottom:8px;">CONTEÚDO PROGRAMÁTICO</div>
           <div style="font-size:0.8rem;color:#444;line-height:1.4;text-align:left;white-space:pre-line;">${escapeHtml(conteudoProgramatico)}</div>
         </div>
-        <div style="margin-top:30px;display:flex;justify-content:center;gap:40px;">
+        <div style="margin-top:30px;display:flex;justify-content:center;gap:40px;flex-wrap:wrap;">
           <div><div style="font-size:0.7rem;">NOTA FINAL</div><div style="font-size:1.3rem;font-weight:700;">${registro.nota}</div></div>
+          <div><div style="font-size:0.7rem;">DURAÇÃO</div><div style="font-size:1rem;">${escapeHtml(duracaoFormacao)}</div></div>
           <div><div style="font-size:0.7rem;">DATA</div><div style="font-size:1rem;">${registro.data}</div></div>
           <div><div style="font-size:0.7rem;">CERTIFICADO ID</div><div style="font-family:monospace;font-size:0.9rem;">${certId}</div></div>
         </div>
@@ -1062,6 +1064,7 @@ function visualizarCertificadoHistorico(historicoId) {
   if (!registro) return;
   const formacao = formacoes.find(f => f.id === registro.cursoId);
   const conteudoProgramatico = formacao?.conteudoProgramatico || formacao?.descricao || 'Conteúdo não especificado';
+  const duracaoFormacao = formacao?.duracao || '—';
   const certId = registro.certificadoId || gerarCertificadoId();
   const fundoImagem = certTemplate.fundoImagem || 'assets/fundo_certificado.png';
   const certHtml = `
@@ -1074,8 +1077,9 @@ function visualizarCertificadoHistorico(historicoId) {
           <div style="font-size:0.9rem;font-weight:700;color:#00338D;margin-bottom:8px;">CONTEÚDO PROGRAMÁTICO</div>
           <div style="font-size:0.8rem;color:#444;line-height:1.4;text-align:left;white-space:pre-line;">${escapeHtml(conteudoProgramatico)}</div>
         </div>
-        <div style="margin-top:30px;display:flex;justify-content:center;gap:40px;">
+        <div style="margin-top:30px;display:flex;justify-content:center;gap:40px;flex-wrap:wrap;">
           <div><div style="font-size:0.7rem;">NOTA FINAL</div><div style="font-size:1.3rem;font-weight:700;">${registro.nota}</div></div>
+          <div><div style="font-size:0.7rem;">DURAÇÃO</div><div style="font-size:1rem;">${escapeHtml(duracaoFormacao)}</div></div>
           <div><div style="font-size:0.7rem;">DATA</div><div style="font-size:1rem;">${registro.data}</div></div>
           <div><div style="font-size:0.7rem;">CERTIFICADO ID</div><div style="font-family:monospace;font-size:0.9rem;">${certId}</div></div>
         </div>
