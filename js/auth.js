@@ -240,6 +240,64 @@ async function loginWithGoogle() {
   }
 }
 
+// ==================== AUTENTICAÇÃO AUTOMÁTICA COM TOKEN ====================
+
+/**
+ * Verifica se existe um token válido na URL e autentica o utilizador automaticamente
+ * @returns {Promise<boolean>} true se autenticou com sucesso
+ */
+async function authenticateWithToken() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const tokenId = urlParams.get('t') || urlParams.get('token');
+  
+  if (!tokenId) return false;
+  
+  console.log("🔑 Tentando autenticar com token:", tokenId);
+  
+  // Tentar ler do localStorage
+  let tokenData = null;
+  const savedTokenData = localStorage.getItem(`token_${tokenId}`);
+  if (savedTokenData) {
+    try { 
+      tokenData = JSON.parse(savedTokenData);
+      console.log("📦 Token carregado do localStorage");
+    } catch(e) {
+      console.warn("Erro ao parsear token do localStorage:", e);
+    }
+  }
+  
+  // Tentar ler do Firestore se não encontrou no localStorage
+  if (!tokenData && window.firebaseReady && window.db) {
+    try {
+      const doc = await window.db.collection('tokens').doc(tokenId).get();
+      if (doc.exists) {
+        tokenData = doc.data();
+        localStorage.setItem(`token_${tokenId}`, JSON.stringify(tokenData));
+        console.log("☁️ Token carregado do Firestore");
+      }
+    } catch(e) { 
+      console.warn("Erro ao carregar token do Firestore:", e); 
+    }
+  }
+  
+  // Se encontrou token válido, autentica o utilizador
+  if (tokenData && tokenData.user && tokenData.cursoId) {
+    console.log("✅ Token válido! Autenticando:", tokenData.user);
+    
+    // Guardar sessão do colaborador
+    localStorage.setItem('usuarioAtivo', tokenData.user);
+    localStorage.setItem('usuarioNome', tokenData.nome || tokenData.user);
+    localStorage.setItem('usuarioEmail', tokenData.email || '');
+    localStorage.setItem('usuarioMatricula', tokenData.matricula || '');
+    localStorage.setItem('cursoAtualId', tokenData.cursoId);
+    
+    return true;
+  }
+  
+  console.warn("❌ Token inválido ou expirado");
+  return false;
+}
+
 // ==================== RECUPERAÇÃO DE PASSWORD (3 PASSOS) ====================
 
 /**
@@ -350,6 +408,8 @@ window.isAuthenticated = isAuthenticated;
 window.logout = logout;
 window.getColaboradores = getColaboradores;
 window.generateUsername = generateUsername;
+
+window.authenticateWithToken = authenticateWithToken;
 
 window.verifyEmailForRecovery = verifyEmailForRecovery;
 window.verifyMatriculaForRecovery = verifyMatriculaForRecovery;
