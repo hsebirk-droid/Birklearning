@@ -119,14 +119,6 @@ async function carregarDadosExemplo() {
   console.log('✅ Dados carregados com sucesso!');
 }
 
-function carregarDoLocalStorage() {
-  formacoes = JSON.parse(localStorage.getItem('formacoes') || '[]');
-  colaboradores = JSON.parse(localStorage.getItem('colaboradores') || '[]');
-  atribuicoes = JSON.parse(localStorage.getItem('atribuicoes') || '[]');
-  historicos = JSON.parse(localStorage.getItem('historicos') || '[]');
-  console.log('📦 Dados carregados do localStorage (fallback)');
-}
-
 // ==================== FUNÇÕES DE SALVAR ====================
 async function salvarFormacoes() {
   localStorage.setItem('formacoes', JSON.stringify(formacoes));
