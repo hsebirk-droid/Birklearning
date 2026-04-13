@@ -1,5 +1,5 @@
 // ============================================
-// FORMAÇÃO - LÓGICA PRINCIPAL (VERSÃO COMPLETA CORRIGIDA)
+// FORMAÇÃO - LÓGICA PRINCIPAL (VERSÃO CORRIGIDA)
 // ============================================
 
 let modules = [];
@@ -16,11 +16,9 @@ let totalPerguntas = 0;
 let atribuicaoAtual = null;
 
 // ==================== INICIALIZAÇÃO ====================
-// ==================== INICIALIZAÇÃO ====================
 async function initFormacao() {
   console.log("🚀 Iniciando página de formação...");
   
-  // Primeiro, verificar se tem token na URL
   const tokenData = await lerTokenUrl();
   
   if (tokenData && tokenData.user && tokenData.cursoId) {
@@ -32,7 +30,6 @@ async function initFormacao() {
       return;
     }
     
-    // ✅ AUTENTICAR AUTOMATICAMENTE O COLABORADOR
     localStorage.setItem('usuarioAtivo', tokenData.user);
     localStorage.setItem('usuarioNome', tokenData.nome || tokenData.user);
     localStorage.setItem('usuarioEmail', tokenData.email || '');
@@ -52,23 +49,25 @@ async function initFormacao() {
     return;
   }
   
-  // Se não tem token, verifica se já está autenticado
   console.log("🔍 Sem token, verificando sessão normal...");
   
-  if (!window.checkAuth || !window.checkAuth()) {
+  const usuario = localStorage.getItem('usuarioAtivo');
+  const admin = localStorage.getItem('usuarioAdmin');
+  
+  if (!usuario && !admin) {
     window.location.href = 'login.html';
     return;
   }
   
-  const user = window.getCurrentUser();
-  if (!user || user.type !== 'colaborador') {
-    window.location.href = 'login.html';
-    return;
+  if (admin) {
+    nomeUser = 'admin';
+    nomeUserDisplay = 'Administrador';
+  } else {
+    nomeUser = usuario;
+    nomeUserDisplay = localStorage.getItem('usuarioNome') || usuario;
+    userEmail = localStorage.getItem('usuarioEmail') || '';
   }
   
-  nomeUser = user.user || user.email || user.name;
-  nomeUserDisplay = user.name || nomeUser;
-  userEmail = user.email || '';
   document.getElementById('user-name-display').textContent = nomeUserDisplay;
   
   const cursoIdStorage = localStorage.getItem('cursoAtualId');
@@ -96,7 +95,7 @@ async function lerTokenUrl() {
         try { return JSON.parse(savedTokenData); } catch(e) {}
     }
     
-    if (window.firebaseReady && window.db && tokenId.length < 50) {
+    if (window.firebaseReady && window.db) {
         try {
             const doc = await window.db.collection('tokens').doc(tokenId).get();
             if (doc.exists) {
@@ -106,25 +105,6 @@ async function lerTokenUrl() {
                 return data;
             }
         } catch(e) { console.warn("Erro ao carregar do Firestore:", e); }
-    }
-    
-    if (tokenId.length > 50) {
-        try {
-            let base64 = tokenId.replace(/-/g, '+').replace(/_/g, '/');
-            while (base64.length % 4) base64 += '=';
-            const binaryStr = atob(base64);
-            const bytes = new Uint8Array(binaryStr.length);
-            for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-            const decoder = new TextDecoder('utf-8');
-            const jsonStr = decoder.decode(bytes);
-            const parsed = JSON.parse(jsonStr);
-            if (parsed && parsed.user && parsed.cursoId) {
-                localStorage.setItem(`token_${tokenId}`, JSON.stringify(parsed));
-                return parsed;
-            }
-        } catch(e) {
-            console.warn("Erro ao decodificar token antigo:", e);
-        }
     }
     
     console.error("❌ Token inválido ou expirado");
@@ -164,24 +144,18 @@ async function carregarFormacao(id) {
   cursoId = id;
   console.log("📚 Carregando formação ID:", id);
   
-    // ✅ MELHORADO: Tentar localStorage primeiro, depois Firestore
   let data = null;
-  
-  // 1. Tentar localStorage
   const formacoesLocal = JSON.parse(localStorage.getItem('formacoes') || '[]');
   data = formacoesLocal.find(f => f.id === id);
   
-  // 2. Se não encontrou no localStorage, tentar Firestore diretamente
   if (!data && window.firebaseReady && window.db) {
     try {
-      console.log('☁️ Formação não encontrada no localStorage, buscando do Firestore...');
+      console.log('☁️ Buscando formação do Firestore...');
       const doc = await window.db.collection('formacoes').doc(id).get();
       if (doc.exists) {
         data = { id: doc.id, ...doc.data() };
-        // Atualizar localStorage para futuros acessos
         formacoesLocal.push(data);
         localStorage.setItem('formacoes', JSON.stringify(formacoesLocal));
-        console.log('✅ Formação carregada do Firestore e guardada localmente');
       }
     } catch (error) {
       console.error('❌ Erro ao buscar do Firestore:', error);
@@ -200,7 +174,6 @@ async function carregarFormacao(id) {
     totalPerguntas = perguntas.length;
     
     await carregarPrazoAtribuicao();
-    
     carregarProgresso();
     
     document.getElementById('hero-title').textContent = cursoData.nome;
@@ -347,23 +320,7 @@ function carregarConteudoModulo(module, moduleIdStr) {
       if (btn) btn.disabled = false;
       window.showToast('✅ Conteúdo visualizado! Pode confirmar a conclusão.');
     }), 100);
-  } else if (module.tipo === 'video') {
-    // ✅ MELHORADO: 30 segundos ou pelo menos 25% da duração estimada
-    // Tenta extrair duração do módulo (ex: "15 min" -> 15)
-    let duracaoMinutos = 5; // padrão 5 minutos
-    const duracaoStr = module.duracao || '';
-    const match = duracaoStr.match(/(\d+)/);
-    if (match) {
-      duracaoMinutos = parseInt(match[1]) || 5;
-    }
-    // Aguardar pelo menos 2 minutos ou 30% da duração, o que for menor
-    const tempoEspera = Math.min(Math.max(duracaoMinutos * 60 * 0.3, 30), 120) * 1000;
-    
-    setTimeout(() => {
-      if (btn) btn.disabled = false;
-      window.showToast('✅ Pode confirmar a conclusão do módulo.');
-    }, tempoEspera);
-} else {
+  } else {
     setTimeout(() => {
       if (btn) btn.disabled = false;
     }, 30000);
@@ -421,7 +378,7 @@ function renderQuiz() {
 }
 
 function mostrarResultadoQuiz(passed) {
-  // Já tratado no submitQuiz
+  // Implementação no submitQuiz
 }
 
 // ==================== INTERAÇÕES ====================
@@ -534,14 +491,11 @@ window.submitQuiz = function() {
 };
 
 async function registrarConclusao(nota) {
-  const userId = window.auth?.currentUser?.uid || nomeUser;
-  
   const novoHistorico = { 
     id: Date.now().toString(), 
     nome: nomeUser, 
     nomeDisplay: nomeUserDisplay, 
     email: userEmail,
-    userId: userId,
     curso: cursoData.nome, 
     cursoId, 
     nota: nota + '%', 
@@ -613,7 +567,7 @@ window.showCertificate = function(nota) {
       <div class="cert-actions">
         <button class="action-btn action-btn-download" id="btn-descarregar-pdf">📄 Descarregar PDF</button>
         <button class="action-btn" id="btn-imprimir-certificado">🖨️ Imprimir</button>
-        <button class="action-btn" onclick="window.location.href='login.html'">🏠 Sair</button>
+        <button class="action-btn" onclick="window.location.href='dashboard.html'">🏠 Dashboard</button>
       </div>
     </div>
   `;
@@ -652,9 +606,19 @@ window.imprimirCertificado = async function() {
 // ==================== BOTÃO SAIR ====================
 document.getElementById('btn-sair')?.addEventListener('click', () => {
   if (confirm('Sair? O progresso será guardado.')) {
-    window.location.href = 'login.html';
+    window.location.href = 'dashboard.html';
   }
 });
 
+// Expor funções globalmente
+window.toggleSection = window.toggleSection;
+window.confirmModule = window.confirmModule;
+window.selectOpt = window.selectOpt;
+window.submitQuiz = window.submitQuiz;
+window.retryQuiz = window.retryQuiz;
+window.showCertificate = window.showCertificate;
+window.descarregarPDF = window.descarregarPDF;
+window.imprimirCertificado = window.imprimirCertificado;
+
 document.addEventListener('DOMContentLoaded', initFormacao);
-console.log("✅ formacao.js carregado - versão completa corrigida");
+console.log("✅ formacao.js carregado - versão corrigida");
