@@ -262,13 +262,33 @@ async function gerarCodigoAtribuicao() {
     const formacao = formacoes.find(f => f.id === cursoId);
     if (!colaborador || !formacao) { showToast('❌ Dados não encontrados'); return; }
     
+    const user = colaborador.user || colaborador.email;
+    
+    // 🔥 VERIFICAR SE JÁ EXISTE ATRIBUIÇÃO ATIVA (NÃO CONCLUÍDA)
+    const atribuicaoExistente = atribuicoes.find(a => 
+        a.colaboradorUser === user && 
+        a.cursoId === cursoId && 
+        a.status !== 'concluido' && 
+        a.status !== 'concluída' && 
+        a.status !== 'Concluido' && 
+        a.status !== 'Concluído'
+    );
+    
+    if (atribuicaoExistente) {
+        showToast('⚠️ Este colaborador já tem esta formação atribuída!');
+        document.getElementById('resultado-atribuicao').style.display = 'block';
+        document.getElementById('link-gerado').textContent = atribuicaoExistente.link;
+        window.linkAtualGerado = atribuicaoExistente.link;
+        return; // 🔥 Não criar duplicado!
+    }
+    
     // Mostrar loading
     showToast('⏳ A gerar link...');
     
     const tokenId = Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
     
     const tokenData = { 
-        user: colaborador.user || colaborador.email,
+        user: user,
         nome: colaborador.nome,
         email: colaborador.email || '',
         matricula: colaborador.matricula || '',
@@ -294,9 +314,9 @@ async function gerarCodigoAtribuicao() {
         const linkFinal = `${urlBase}?t=${tokenId}`;
         
         const novaAtribuicao = {
-            id: Date.now().toString(),
+            id: Date.now().toString() + '_' + user.replace(/[^a-z0-9]/gi, '_'),
             colaboradorId: colaborador.id,
-            colaboradorUser: colaborador.user || colaborador.email,
+            colaboradorUser: user,
             colaboradorNome: colaborador.nome,
             colaboradorEmail: colaborador.email || '',
             colaboradorMatricula: colaborador.matricula || '',
