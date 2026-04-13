@@ -1319,15 +1319,38 @@ function alterarPasswordAdmin() {
   const atual = document.getElementById('admin-pass-atual')?.value;
   const nova = document.getElementById('admin-pass-nova')?.value;
   const conf = document.getElementById('admin-pass-confirm')?.value;
-  if (atual !== (localStorage.getItem('admin_password') || window.ADMIN_PASS)) { showToast('❌ Password atual incorreta'); return; }
-  if (nova !== conf) { showToast('❌ Passwords não coincidem'); return; }
-  if (nova.length < 6) { showToast('❌ Mínimo 6 caracteres'); return; }
+  
+  const passwordAtual = localStorage.getItem('admin_password') || window.ADMIN_PASS || 'SSA2024admin';
+  
+  if (atual !== passwordAtual) { 
+    showToast('❌ Password atual incorreta'); 
+    return; 
+  }
+  if (nova !== conf) { 
+    showToast('❌ Passwords não coincidem'); 
+    return; 
+  }
+  if (nova.length < 6) { 
+    showToast('❌ Mínimo 6 caracteres'); 
+    return; 
+  }
+  
+  // 🔥 Atualizar AMBAS as fontes
   localStorage.setItem('admin_password', nova);
   window.ADMIN_PASS = nova;
+  
   showToast('✅ Password alterada com sucesso!');
+  
+  // Limpar campos
   document.getElementById('admin-pass-atual').value = '';
   document.getElementById('admin-pass-nova').value = '';
   document.getElementById('admin-pass-confirm').value = '';
+  
+  // 🔥 Recarregar a página após 2 segundos para garantir
+  setTimeout(() => {
+    showToast('🔄 A recarregar página...');
+    setTimeout(() => location.reload(), 1000);
+  }, 2000);
 }
 
 // ==================== SWITCH TAB ====================
