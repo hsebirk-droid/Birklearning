@@ -260,21 +260,27 @@ function renderCourses() {
       let btnText = progress > 0 ? '▶ Continuar' : '📖 Iniciar';
       let btnClass = progress > 0 ? 'continue' : '';
       
-      cardContent = `
-        <div class="course-card">
-          <div class="course-cover" onclick="window.entrarFormacao('${curso.id}')">
-            <span>${curso.icone || '📖'}</span>
-            <span class="course-badge">${curso.duracao || '30 min'}</span>
-          </div>
-          <div class="course-body" onclick="window.entrarFormacao('${curso.id}')">
-            <div class="course-title">${window.escapeHtml(curso.nome)}</div>
-            <div class="course-prazo" style="font-size: 12px; color: var(--birkenstock-gray); margin: 8px 0;">
-              <i class="far fa-calendar-alt"></i> Prazo: ${window.escapeHtml(prazo)}
-            </div>
-            <div class="course-meta">
-              <span><i class="fas fa-layer-group"></i> ${modulesCount} módulos</span>
-              <span><i class="fas fa-question-circle"></i> ${curso.perguntas?.length || 0} questões</span>
-            </div>
+      // ✅ Extrair primeiras palavras do conteúdo programático para preview
+const conteudoPreview = (curso.conteudoProgramatico || curso.descricao || '').substring(0, 80) + '...';
+
+cardContent = `
+  <div class="course-card">
+    <div class="course-cover" onclick="window.entrarFormacao('${curso.id}')">
+      <span>${curso.icone || '📖'}</span>
+      <span class="course-badge">${curso.duracao || '30 min'}</span>
+    </div>
+    <div class="course-body" onclick="window.entrarFormacao('${curso.id}')">
+      <div class="course-title">${window.escapeHtml(curso.nome)}</div>
+      <div class="course-desc" style="font-size: 12px; color: var(--birkenstock-gray); margin: 8px 0; line-height: 1.4;">
+        ${window.escapeHtml(conteudoPreview)}
+      </div>
+      <div class="course-prazo" style="font-size: 12px; color: var(--birkenstock-blue); margin: 8px 0;">
+        <i class="far fa-calendar-alt"></i> Prazo: ${window.escapeHtml(prazo)}
+      </div>
+      <div class="course-meta">
+        <span><i class="fas fa-layer-group"></i> ${modulesCount} módulos</span>
+        <span><i class="fas fa-question-circle"></i> ${curso.perguntas?.length || 0} questões</span>
+      </div>
             ${progress > 0 ? `
               <div class="course-progress">
                 <div class="progress-bar">
