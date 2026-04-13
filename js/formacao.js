@@ -164,8 +164,29 @@ async function carregarFormacao(id) {
   cursoId = id;
   console.log("📚 Carregando formação ID:", id);
   
-  const formacoes = JSON.parse(localStorage.getItem('formacoes') || '[]');
-  const data = formacoes.find(f => f.id === id);
+    // ✅ MELHORADO: Tentar localStorage primeiro, depois Firestore
+  let data = null;
+  
+  // 1. Tentar localStorage
+  const formacoesLocal = JSON.parse(localStorage.getItem('formacoes') || '[]');
+  data = formacoesLocal.find(f => f.id === id);
+  
+  // 2. Se não encontrou no localStorage, tentar Firestore diretamente
+  if (!data && window.firebaseReady && window.db) {
+    try {
+      console.log('☁️ Formação não encontrada no localStorage, buscando do Firestore...');
+      const doc = await window.db.collection('formacoes').doc(id).get();
+      if (doc.exists) {
+        data = { id: doc.id, ...doc.data() };
+        // Atualizar localStorage para futuros acessos
+        formacoesLocal.push(data);
+        localStorage.setItem('formacoes', JSON.stringify(formacoesLocal));
+        console.log('✅ Formação carregada do Firestore e guardada localmente');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar do Firestore:', error);
+    }
+  }
   
   if (data) {
     cursoData = { 
