@@ -712,22 +712,96 @@ function removerColab(id) {
   }
 }
 
-function saveUser() {
+async function saveUser() {
   const matricula = document.getElementById('u-matricula')?.value.trim() || '';
   const nome = document.getElementById('u-nome')?.value.trim() || '';
   const email = document.getElementById('u-email')?.value.trim() || '';
   const pass = document.getElementById('u-pass')?.value || '';
-  const user = nome.toLowerCase().replace(/\s+/g, '.');
-  if (!nome || !pass) { showToast('❌ Preencha nome e password.'); return; }
-  const novoColab = { id: Date.now().toString(), matricula, user, nome, email, pass, dataCriacao: new Date().toISOString() };
-  colaboradores.push(novoColab);
-  salvarColaboradores();
-  showToast('✅ Colaborador criado!');
-  document.getElementById('u-matricula').value = '';
-  document.getElementById('u-nome').value = '';
-  document.getElementById('u-email').value = '';
-  document.getElementById('u-pass').value = '';
-  renderColabs(); atualizarSelectores(); atualizarDashboard(); renderAcompanhamento();
+  
+  if (!nome || !pass) { 
+    showToast('❌ Preencha nome e password.'); 
+    return; 
+  }
+  
+  if (!email) {
+    showToast('❌ Email é obrigatório para autenticação.');
+    return;
+  }
+  
+  // Mostrar loading
+  const btn = document.getElementById('btn-save-user');
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> A criar...';
+  
+  try {
+    let firebaseUid = null;
+    
+    // 1. Criar utilizador no Firebase Authentication
+    if (window.firebaseReady && window.auth) {
+      try {
+        const userCredential = await window.auth.createUserWithEmailAndPassword(email, pass);
+        firebaseUid = userCredential.user.uid;
+        console.log('✅ Utilizador criado no Firebase Auth:', firebaseUid);
+      } catch (authError) {
+        console.error('Erro Firebase Auth:', authError);
+        
+        // Se o email já existir
+        if (authError.code === 'auth/email-already-in-use') {
+          showToast('⚠️ Email já registado no sistema.');
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+          return;
+        }
+        
+        throw authError;
+      }
+    }
+    
+    // 2. Criar objeto do colaborador
+    const user = email.split('@')[0].toLowerCase();
+    const novoColab = { 
+      id: firebaseUid || Date.now().toString(), 
+      matricula, 
+      user, 
+      nome, 
+      email, 
+      pass: pass, // Guardar para fallback offline
+      dataCriacao: new Date().toISOString(),
+      criadoPor: localStorage.getItem('usuarioEmail') || 'admin'
+    };
+    
+    // 3. Guardar no Firestore
+    if (window.firebaseReady && window.db) {
+      await window.db.collection('colaboradores').doc(novoColab.id).set(novoColab);
+      console.log('✅ Colaborador guardado no Firestore');
+    }
+    
+    // 4. Atualizar array local
+    colaboradores.push(novoColab);
+    localStorage.setItem('colaboradores', JSON.stringify(colaboradores));
+    
+    showToast('✅ Colaborador criado com sucesso!');
+    
+    // Limpar formulário
+    document.getElementById('u-matricula').value = '';
+    document.getElementById('u-nome').value = '';
+    document.getElementById('u-email').value = '';
+    document.getElementById('u-pass').value = '';
+    
+    // Atualizar UI
+    renderColabs(); 
+    atualizarSelectores(); 
+    atualizarDashboard(); 
+    renderAcompanhamento();
+    
+  } catch (error) {
+    console.error('Erro ao criar colaborador:', error);
+    showToast('❌ Erro: ' + (error.message || 'Tente novamente.'));
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
 }
 
 function importColaboradores(files) {
