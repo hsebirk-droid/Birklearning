@@ -16,14 +16,11 @@ let totalPerguntas = 0;
 let atribuicaoAtual = null;
 
 // ==================== INICIALIZAÇÃO ====================
+// ==================== INICIALIZAÇÃO ====================
 async function initFormacao() {
   console.log("🚀 Iniciando página de formação...");
   
-  if (!window.checkAuth || !window.checkAuth()) {
-    window.location.href = 'login.html';
-    return;
-  }
-  
+  // Primeiro, verificar se tem token na URL
   const tokenData = await lerTokenUrl();
   
   if (tokenData && tokenData.user && tokenData.cursoId) {
@@ -35,8 +32,12 @@ async function initFormacao() {
       return;
     }
     
+    // ✅ AUTENTICAR AUTOMATICAMENTE O COLABORADOR
     localStorage.setItem('usuarioAtivo', tokenData.user);
     localStorage.setItem('usuarioNome', tokenData.nome || tokenData.user);
+    localStorage.setItem('usuarioEmail', tokenData.email || '');
+    localStorage.setItem('usuarioMatricula', tokenData.matricula || '');
+    
     nomeUser = tokenData.user;
     nomeUserDisplay = tokenData.nome || tokenData.user;
     userEmail = tokenData.email || '';
@@ -51,7 +52,14 @@ async function initFormacao() {
     return;
   }
   
+  // Se não tem token, verifica se já está autenticado
   console.log("🔍 Sem token, verificando sessão normal...");
+  
+  if (!window.checkAuth || !window.checkAuth()) {
+    window.location.href = 'login.html';
+    return;
+  }
+  
   const user = window.getCurrentUser();
   if (!user || user.type !== 'colaborador') {
     window.location.href = 'login.html';
