@@ -553,15 +553,18 @@ window.showCertificate = function(nota) {
   let fundoImagem = 'assets/fundo_certificado.png';
   try { const t = JSON.parse(localStorage.getItem('cert_template')); if (t?.fundoImagem) fundoImagem = t.fundoImagem; } catch(e) {}
   
+  const duracaoFormacao = cursoData.duracao || '—';
+  
   const certHtml = `
     <div class="cert-screen" id="cert-screen">
       <div id="certificado-para-pdf" style="background-image:url('${fundoImagem}');background-size:cover;width:100%;max-width:210mm;aspect-ratio:210/297;">
         <div style="height:100%;display:flex;flex-direction:column;justify-content:center;padding:40px;text-align:center;">
           <div style="font-family:'Fraunces',serif;font-size:2.2rem;font-weight:900;color:#00338D;margin-bottom:20px;">${window.escapeHtml(nomeUserDisplay)}</div>
           <div style="font-size:1.2rem;color:#616365;margin-bottom:20px;">concluiu com sucesso a formação</div>
-          <div style="font-family:'Fraunces',serif;font-size:1.5rem;font-weight:700;color:#C5A059;margin-bottom:50px;">${window.escapeHtml(cursoData.nome)}</div>
+          <div style="font-family:'Fraunces',serif;font-size:1.5rem;font-weight:700;color:#C5A059;margin-bottom:30px;">${window.escapeHtml(cursoData.nome)}</div>
           <div style="display:flex;justify-content:center;gap:60px;flex-wrap:wrap;">
             <div><div>NOTA FINAL</div><div style="font-size:1.5rem;font-weight:700;color:#00338D;">${typeof nota==='number'?nota+'%':nota}</div></div>
+            <div><div>DURAÇÃO</div><div style="font-size:1rem;color:#00338D;">${window.escapeHtml(duracaoFormacao)}</div></div>
             <div><div>DATA</div><div style="font-size:1rem;color:#00338D;">${window.formatDate(new Date())}</div></div>
             <div><div>CERTIFICADO ID</div><div style="font-family:monospace;color:#00338D;">${certId}</div></div>
           </div>
