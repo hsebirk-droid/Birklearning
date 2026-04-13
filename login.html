@@ -217,6 +217,17 @@
   <script src="js/auth.js"></script>
 
   <script>
+    // ==================== VERIFICAR TOKEN E REDIRECIONAR ====================
+    (async function checkTokenAndRedirect() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tokenId = urlParams.get('t') || urlParams.get('token');
+      
+      if (tokenId) {
+        console.log("🔑 Token encontrado no login, redirecionando para formação...");
+        window.location.href = 'formacao.html' + window.location.search;
+      }
+    })();
+
     const errMsgDiv = document.getElementById('errmsg');
     const formColab = document.getElementById('form-colab');
     const formAdmin = document.getElementById('form-admin');
@@ -455,9 +466,7 @@
       });
     }
 
-    // ✅ CORRIGIDO: Campo de matrícula permite digitação normal
     if (recoveryMatricula) {
-      // Permite apenas números durante a digitação
       recoveryMatricula.addEventListener('keypress', (e) => {
         const key = e.key;
         if (!/^\d$/.test(key) && key !== 'Backspace' && key !== 'Delete' && key !== 'ArrowLeft' && key !== 'ArrowRight' && key !== 'Tab') {
@@ -465,7 +474,6 @@
         }
       });
       
-      // Quando perde o foco, formata para 4 dígitos com zeros à esquerda
       recoveryMatricula.addEventListener('blur', (e) => {
         let value = e.target.value;
         let numbers = value.replace(/\D/g, '');
@@ -482,7 +490,6 @@
       btnVerifyMatricula.addEventListener('click', async () => {
         let matricula = recoveryMatricula.value.trim();
         
-        // Limpa e formata a matrícula
         let numbers = matricula.replace(/\D/g, '');
         if (numbers.length > 0) {
           matricula = numbers.padStart(4, '0');
