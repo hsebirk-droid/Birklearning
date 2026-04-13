@@ -80,12 +80,20 @@ async function carregarDadosExemplo() {
       localStorage.setItem('atribuicoes', JSON.stringify(atribuicoes));
       localStorage.setItem('historicos', JSON.stringify(historicos));
     } catch (error) {
-      console.warn('⚠️ Erro ao carregar do Firestore, usando localStorage:', error.message);
-      carregarDoLocalStorage();
+      console.error('❌ Erro crítico ao carregar do Firestore:', error.message);
+      const dashboardGrid = document.getElementById('dashboard-grid');
+      if (dashboardGrid) {
+        dashboardGrid.innerHTML = '<div class="empty"><p>❌ Erro de ligação à base de dados.<br><button class="btn" onclick="location.reload()">Tentar novamente</button></p></div>';
+      }
+      return;
     }
   } else {
-    console.log('📦 Usando localStorage (não autenticado ou offline)');
-    carregarDoLocalStorage();
+    console.error('❌ Firestore indisponível ou não autenticado');
+    const dashboardGrid = document.getElementById('dashboard-grid');
+    if (dashboardGrid) {
+      dashboardGrid.innerHTML = '<div class="empty"><p>❌ Sem ligação à base de dados.<br><button class="btn" onclick="location.reload()">Tentar novamente</button></p></div>';
+    }
+    return;
   }
   
   if (!formacoes || formacoes.length === 0) {
