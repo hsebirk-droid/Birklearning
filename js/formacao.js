@@ -289,7 +289,12 @@ function renderModules() {
       <div class="section-header" onclick="window.toggleSection('${moduleIdStr}')">
         <div class="s-num">${idx + 1}</div>
         <div class="s-info"><div class="s-title">${window.escapeHtml(module.titulo || 'Módulo ' + (idx + 1))}</div>
-        <div class="s-meta">${module.tipo==='video'?'🎬':module.tipo==='texto'?'📄':'🔗'} ${module.duracao || '15 min'}</div></div>
+        <div class="s-meta">
+  <span class="module-type-tag ${module.tipo}">
+    ${module.tipo==='video'?'🎬 Vídeo':module.tipo==='texto'?'📄 Texto':'🔗 Link'}
+  </span>
+  <span><i class="far fa-clock"></i> ${module.duracao || '15 min'}</span>
+</div></div>
         <div>${isCompleted ? '✅' : (isLocked ? '🔒' : '▶')}</div>
       </div>
       <div class="section-body" id="body-${moduleIdStr}">
