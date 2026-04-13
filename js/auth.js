@@ -323,30 +323,23 @@ async function authenticateWithToken() {
   
   console.log("🔑 Tentando autenticar com token:", tokenId);
   
-  // Tentar ler do localStorage
   let tokenData = null;
-  const savedTokenData = localStorage.getItem(`token_${tokenId}`);
-  if (savedTokenData) {
-    try { 
-      tokenData = JSON.parse(savedTokenData);
-      console.log("📦 Token carregado do localStorage");
-    } catch(e) {
-      console.warn("Erro ao parsear token do localStorage:", e);
-    }
-  }
   
-  // Tentar ler do Firestore se não encontrou no localStorage
-  if (!tokenData && window.firebaseReady && window.db) {
+  // 🔥 LER APENAS DO FIRESTORE (fonte única de verdade)
+  if (window.firebaseReady && window.db) {
     try {
       const doc = await window.db.collection('tokens').doc(tokenId).get();
       if (doc.exists) {
         tokenData = doc.data();
-        localStorage.setItem(`token_${tokenId}`, JSON.stringify(tokenData));
         console.log("☁️ Token carregado do Firestore");
       }
     } catch(e) { 
-      console.warn("Erro ao carregar token do Firestore:", e); 
+      console.error("❌ Erro ao carregar token do Firestore:", e); 
+      return false;
     }
+  } else {
+    console.error("❌ Firestore indisponível");
+    return false;
   }
   
   // Se encontrou token válido, autentica o utilizador
