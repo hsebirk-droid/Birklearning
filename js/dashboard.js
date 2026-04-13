@@ -1,5 +1,5 @@
 // ============================================
-// DASHBOARD - LÓGICA PRINCIPAL (VERSÃO CORRIGIDA)
+// DASHBOARD - LÓGICA PRINCIPAL (VERSÃO CORRIGIDA - ATUALIZAÇÃO DE ESTATÍSTICAS)
 // ============================================
 
 let allCourses = [];
@@ -42,12 +42,13 @@ async function loadCourses() {
   if (allCourses.length === 0) {
     loadingDiv.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><h4>Nenhuma formação disponível</h4><p>Não há formações atribuídas a si.</p></div>';
     coursesGrid.style.display = 'block';
+    updateUserStats(); // Atualizar estatísticas mesmo sem cursos
     return;
   }
 
   await filtrarApenasAtribuidas();
-  loadUserProgress();
-  updateUserStats();
+  loadUserProgress(); // Carregar progresso do utilizador
+  updateUserStats();   // Atualizar estatísticas
   renderCourses();
 
   loadingDiv.style.display = 'none';
@@ -90,6 +91,12 @@ async function initDashboard() {
 
   await loadCourses();
   setupEventListeners();
+  
+  // Forçar atualização das estatísticas novamente
+  setTimeout(() => {
+    updateUserStats();
+    console.log('📊 Estatísticas atualizadas após carregamento');
+  }, 500);
 }
 
 async function filtrarApenasAtribuidas() {
@@ -141,47 +148,117 @@ async function filtrarApenasAtribuidas() {
 }
 
 function loadUserProgress() {
-  const saved = localStorage.getItem(getSessionProgressKey());
+  const progressKey = getSessionProgressKey();
+  console.log('🔑 Chave de progresso:', progressKey);
+  
+  const saved = localStorage.getItem(progressKey);
+  console.log('📦 Progresso guardado:', saved);
+  
   if (!saved) {
     userProgress = {};
+    console.log('ℹ️ Nenhum progresso encontrado');
     return;
   }
+  
   try {
     userProgress = JSON.parse(saved);
+    console.log('✅ Progresso carregado:', userProgress);
   } catch (e) {
-    console.error('Erro ao carregar progresso:', e);
+    console.error('❌ Erro ao carregar progresso:', e);
     userProgress = {};
   }
+  
+  // Também verificar progresso por curso individual
+  allCourses.forEach(curso => {
+    const progressoCurso = localStorage.getItem(`progresso_${curso.id}_${currentUser?.user || currentUser?.email}`);
+    if (progressoCurso) {
+      try {
+        const prog = JSON.parse(progressoCurso);
+        if (prog.quizPassed) {
+          if (!userProgress[curso.id]) {
+            userProgress[curso.id] = {};
+          }
+          userProgress[curso.id].completed = true;
+          userProgress[curso.id].modulesCompleted = curso.modulos?.length || 0;
+        }
+      } catch(e) {}
+    }
+  });
+  
+  // Guardar o progresso consolidado
+  localStorage.setItem(progressKey, JSON.stringify(userProgress));
 }
 
 function calculateCourseProgress(curso) {
   if (!curso || !curso.id) return 0;
+  
   const progress = userProgress[curso.id];
-  if (progress?.completed) return 100;
+  console.log(`📊 Progresso para ${curso.nome}:`, progress);
+  
+  if (progress?.completed) {
+    return 100;
+  }
+  
   if (progress?.modulesCompleted) {
     const totalModules = curso.modulos?.length || 1;
     return Math.round((progress.modulesCompleted / totalModules) * 100);
   }
+  
   return 0;
 }
 
 function updateUserStats() {
+  console.log('📊 Atualizando estatísticas...');
+  console.log('Cursos disponíveis:', allCourses.length);
+  console.log('Progresso do utilizador:', userProgress);
+  
   let completed = 0;
   let inProgress = 0;
 
   allCourses.forEach((curso) => {
     const progress = calculateCourseProgress(curso);
-    if (progress === 100) completed++;
-    else if (progress > 0) inProgress++;
+    console.log(`📚 ${curso.nome}: ${progress}%`);
+    if (progress === 100) {
+      completed++;
+    } else if (progress > 0) {
+      inProgress++;
+    }
   });
+
+  console.log(`✅ Estatísticas: ${completed} concluídas, ${inProgress} em curso`);
 
   const coursesCompletedEl = document.getElementById('coursesCompleted');
   const coursesInProgressEl = document.getElementById('coursesInProgress');
   const certificatesCountEl = document.getElementById('certificatesCount');
   
-  if (coursesCompletedEl) coursesCompletedEl.textContent = completed;
-  if (coursesInProgressEl) coursesInProgressEl.textContent = inProgress;
-  if (certificatesCountEl) certificatesCountEl.textContent = completed;
+  if (coursesCompletedEl) {
+    coursesCompletedEl.textContent = completed;
+    console.log('📊 Elemento coursesCompleted atualizado:', completed);
+  } else {
+    console.warn('⚠️ Elemento coursesCompleted não encontrado');
+  }
+  
+  if (coursesInProgressEl) {
+    coursesInProgressEl.textContent = inProgress;
+    console.log('📊 Elemento coursesInProgress atualizado:', inProgress);
+  } else {
+    console.warn('⚠️ Elemento coursesInProgress não encontrado');
+  }
+  
+  if (certificatesCountEl) {
+    certificatesCountEl.textContent = completed;
+    console.log('📊 Elemento certificatesCount atualizado:', completed);
+  } else {
+    console.warn('⚠️ Elemento certificatesCount não encontrado');
+  }
+  
+  // Também atualizar os cards de estatísticas se existirem
+  const statCards = document.querySelectorAll('.stat-info h3');
+  if (statCards.length >= 3) {
+    statCards[0].textContent = completed;
+    statCards[1].textContent = inProgress;
+    statCards[2].textContent = completed;
+  }
 }
 
 function getFilteredCourses() {
@@ -289,6 +366,9 @@ function renderCourses() {
       `;
     }
   }).join('');
+  
+  // Atualizar estatísticas novamente após renderizar
+  updateUserStats();
 }
 
 function setupEventListeners() {
@@ -535,4 +615,4 @@ if (document.readyState === 'loading') {
   initDashboard();
 }
 
-console.log('✅ dashboard.js carregado - versão corrigida');
+console.log('✅ dashboard.js carregado - versão corrigida com atualização de estatísticas');
