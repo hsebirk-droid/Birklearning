@@ -1,5 +1,5 @@
 // ============================================
-// ADMIN - LÓGICA PRINCIPAL (VERSÃO CORRIGIDA COMPLETA)
+// ADMIN - LÓGICA PRINCIPAL (VERSÃO FINAL CORRIGIDA)
 // ============================================
 
 let formacoes = [];
@@ -23,67 +23,56 @@ const defaultCert = {
 
 let certTemplate = JSON.parse(localStorage.getItem('cert_template') || JSON.stringify(defaultCert));
 
-// ==================== TOKEN SEGURO ====================
-function gerarTokenSeguro(dados) {
-    try {
-        const jsonStr = JSON.stringify(dados);
-        const encoder = new TextEncoder();
-        const utf8Bytes = encoder.encode(jsonStr);
-        let base64 = '';
-        const chunk = 0x8000;
-        for (let i = 0; i < utf8Bytes.length; i += chunk) {
-            const slice = utf8Bytes.subarray(i, i + chunk);
-            base64 += String.fromCharCode.apply(null, slice);
-        }
-        base64 = btoa(base64);
-        base64 = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-        return base64;
-    } catch(e) {
-        console.error('Erro ao gerar token:', e);
-        const jsonStr = JSON.stringify(dados);
-        let base64 = btoa(unescape(encodeURIComponent(jsonStr)));
-        base64 = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-        return base64;
-    }
+// ==================== FUNÇÕES UTILITÁRIAS ====================
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
+
+function showToast(msg) { window.showToast(msg); }
+
+function formatDate(date) { return window.formatDate(date); }
+
+function downloadExcel(data, name, sheet) { window.downloadExcel(data, name, sheet); }
+
+function gerarCertificadoId() { return window.gerarCertificadoId(); }
 
 // ==================== DADOS ====================
 async function carregarDadosExemplo() {
   console.log('📦 A carregar dados...');
-  
   const firebaseUser = window.auth?.currentUser;
-  const isAdminEmail = firebaseUser?.email && window.isAdminEmail ? window.isAdminEmail(firebaseUser.email) : false;
-  const isAuthenticated = firebaseUser && isAdminEmail;
+  const isAdmin = firebaseUser?.email && window.isAdminEmail ? window.isAdminEmail(firebaseUser.email) : false;
   
-  if (window.firebaseReady && window.db && isAuthenticated) {
+  if (window.firebaseReady && window.db && (isAdmin || localStorage.getItem('usuarioAdmin') === 'admin')) {
     try {
-      console.log('☁️ A carregar do Firestore...');
-      const snapshotFormacoes = await window.db.collection('formacoes').get();
-      formacoes = snapshotFormacoes.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      console.log(`✅ ${formacoes.length} formações carregadas`);
-      
-      const snapshotColabs = await window.db.collection('colaboradores').get();
-      colaboradores = snapshotColabs.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      console.log(`✅ ${colaboradores.length} colaboradores carregados`);
-      
-      const snapshotAtrib = await window.db.collection('atribuicoes').get();
-      atribuicoes = snapshotAtrib.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      console.log(`✅ ${atribuicoes.length} atribuições carregadas`);
-      
-      const snapshotHist = await window.db.collection('historicos').get();
-      historicos = snapshotHist.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      console.log(`✅ ${historicos.length} históricos carregados`);
-      
-      localStorage.setItem('formacoes', JSON.stringify(formacoes));
-      localStorage.setItem('colaboradores', JSON.stringify(colaboradores));
-      localStorage.setItem('atribuicoes', JSON.stringify(atribuicoes));
-      localStorage.setItem('historicos', JSON.stringify(historicos));
-    } catch (error) {
-      console.error('❌ Erro ao carregar do Firestore:', error.message);
-      return;
+      if (isAdmin) {
+        const snapF = await window.db.collection('formacoes').get();
+        formacoes = snapF.docs.map(d => ({ id: d.id, ...d.data() }));
+        const snapC = await window.db.collection('colaboradores').get();
+        colaboradores = snapC.docs.map(d => ({ id: d.id, ...d.data() }));
+        const snapA = await window.db.collection('atribuicoes').get();
+        atribuicoes = snapA.docs.map(d => ({ id: d.id, ...d.data() }));
+        const snapH = await window.db.collection('historicos').get();
+        historicos = snapH.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        localStorage.setItem('formacoes', JSON.stringify(formacoes));
+        localStorage.setItem('colaboradores', JSON.stringify(colaboradores));
+        localStorage.setItem('atribuicoes', JSON.stringify(atribuicoes));
+        localStorage.setItem('historicos', JSON.stringify(historicos));
+      } else {
+        formacoes = JSON.parse(localStorage.getItem('formacoes') || '[]');
+        colaboradores = JSON.parse(localStorage.getItem('colaboradores') || '[]');
+        atribuicoes = JSON.parse(localStorage.getItem('atribuicoes') || '[]');
+        historicos = JSON.parse(localStorage.getItem('historicos') || '[]');
+      }
+    } catch (e) {
+      console.error('Erro:', e);
+      formacoes = JSON.parse(localStorage.getItem('formacoes') || '[]');
+      colaboradores = JSON.parse(localStorage.getItem('colaboradores') || '[]');
+      atribuicoes = JSON.parse(localStorage.getItem('atribuicoes') || '[]');
+      historicos = JSON.parse(localStorage.getItem('historicos') || '[]');
     }
   } else {
-    console.log('📦 A carregar do localStorage (modo offline)');
     formacoes = JSON.parse(localStorage.getItem('formacoes') || '[]');
     colaboradores = JSON.parse(localStorage.getItem('colaboradores') || '[]');
     atribuicoes = JSON.parse(localStorage.getItem('atribuicoes') || '[]');
@@ -92,134 +81,90 @@ async function carregarDadosExemplo() {
   
   if (!formacoes.length) {
     formacoes = [{
-      id: "1", nome: "Formação Tester", descricao: "Formação de exemplo.", duracao: "45 min", icone: "💬",
-      modulos: [{ id: "m1", titulo: "Módulo Exemplo", tipo: "video", conteudo: { url: "https://www.youtube.com/embed/dQw4w9WgXcQ" }, duracao: "10 min" }],
-      perguntas: [{ id: "p1", texto: "Qual a primeira impressão?", opcoes: ["Olhos", "Sorriso", "Postura", "Todas"], correta: "D" }]
+      id: "1", nome: "Formação Exemplo", duracao: "45 min", icone: "📚",
+      modulos: [{ id: "m1", titulo: "Módulo 1", tipo: "video", conteudo: { url: "https://www.youtube.com/embed/dQw4w9WgXcQ" }, duracao: "10 min" }],
+      perguntas: [{ id: "p1", texto: "Pergunta exemplo?", opcoes: ["A", "B", "C", "D"], correta: "A" }]
     }];
     await salvarFormacoes();
   }
-  
   if (!colaboradores.length) {
-    colaboradores = [{ id: "c1", matricula: "000", user: "tester", nome: "Tester", email: "tester@birkenstock.pt", pass: "123456" }];
+    colaboradores = [{ id: "c1", matricula: "001", user: "colab", nome: "Colaborador", email: "colab@teste.pt", pass: "123456" }];
     await salvarColaboradores();
   }
-  
-  console.log('✅ Dados carregados com sucesso!');
+  console.log('✅ Dados carregados');
 }
 
 async function salvarFormacoes() {
   localStorage.setItem('formacoes', JSON.stringify(formacoes));
   if (window.firebaseReady && window.db) {
-    for (const f of formacoes) {
-      await window.db.collection('formacoes').doc(f.id).set(f, { merge: true });
-    }
+    for (const f of formacoes) await window.db.collection('formacoes').doc(f.id).set(f, { merge: true });
   }
 }
-
 async function salvarColaboradores() {
   localStorage.setItem('colaboradores', JSON.stringify(colaboradores));
   if (window.firebaseReady && window.db) {
-    for (const c of colaboradores) {
-      await window.db.collection('colaboradores').doc(c.id).set(c, { merge: true });
-    }
+    for (const c of colaboradores) await window.db.collection('colaboradores').doc(c.id).set(c, { merge: true });
   }
 }
-
 async function salvarAtribuicoes() {
   localStorage.setItem('atribuicoes', JSON.stringify(atribuicoes));
   if (window.firebaseReady && window.db) {
-    for (const a of atribuicoes) {
-      await window.db.collection('atribuicoes').doc(a.id).set(a, { merge: true });
-    }
+    for (const a of atribuicoes) await window.db.collection('atribuicoes').doc(a.id).set(a, { merge: true });
   }
 }
-
 async function salvarHistoricos() {
   localStorage.setItem('historicos', JSON.stringify(historicos));
   if (window.firebaseReady && window.db) {
-    for (const h of historicos) {
-      await window.db.collection('historicos').doc(h.id).set(h, { merge: true });
-    }
+    for (const h of historicos) await window.db.collection('historicos').doc(h.id).set(h, { merge: true });
   }
 }
 
-function getColaboradoresList() { return colaboradores; }
-function getFormacoesList() { return formacoes; }
-
 // ==================== DASHBOARD ====================
 function atualizarDashboard() {
-  const totalFormacoes = formacoes.length;
-  const totalColaboradores = colaboradores.length;
-  const totalAtribuicoes = atribuicoes.length;
-  const concluidas = atribuicoes.filter(a => ['concluido', 'concluída', 'Concluido', 'Concluído'].includes(a.status)).length;
-  const pendentes = totalAtribuicoes - concluidas;
+  const totalF = formacoes.length, totalC = colaboradores.length, totalA = atribuicoes.length;
+  const concluidas = atribuicoes.filter(a => ['concluido','concluída','Concluido','Concluído'].includes(a.status)).length;
   
-  const dashboardGrid = document.getElementById('dashboard-grid');
-  if (dashboardGrid) {
-    dashboardGrid.innerHTML = `
-      <div class="dash-card"><div class="dash-icon" style="background:var(--info-bg)">📚</div><div class="dash-info"><h3>${totalFormacoes}</h3><p>Formações</p></div></div>
-      <div class="dash-card"><div class="dash-icon" style="background:var(--success-bg)">👥</div><div class="dash-info"><h3>${totalColaboradores}</h3><p>Colaboradores</p></div></div>
-      <div class="dash-card"><div class="dash-icon" style="background:var(--purple-bg)">🏅</div><div class="dash-info"><h3>${concluidas}</h3><p>Concluídas</p></div></div>
-      <div class="dash-card"><div class="dash-icon" style="background:var(--warning-bg)">⏳</div><div class="dash-info"><h3>${pendentes}</h3><p>Pendentes</p></div></div>
-    `;
-  }
+  const grid = document.getElementById('dashboard-grid');
+  if (grid) grid.innerHTML = `
+    <div class="dash-card"><div class="dash-icon" style="background:var(--info-bg)">📚</div><div class="dash-info"><h3>${totalF}</h3><p>Formações</p></div></div>
+    <div class="dash-card"><div class="dash-icon" style="background:var(--success-bg)">👥</div><div class="dash-info"><h3>${totalC}</h3><p>Colaboradores</p></div></div>
+    <div class="dash-card"><div class="dash-icon" style="background:var(--purple-bg)">🏅</div><div class="dash-info"><h3>${concluidas}</h3><p>Concluídas</p></div></div>
+    <div class="dash-card"><div class="dash-icon" style="background:var(--warning-bg)">⏳</div><div class="dash-info"><h3>${totalA - concluidas}</h3><p>Pendentes</p></div></div>
+  `;
   
   const recentes = historicos.slice(-5).reverse();
-  const recentActivities = document.getElementById('recent-activities');
-  if (recentActivities) {
-    recentActivities.innerHTML = recentes.length ? recentes.map(h => `
-      <div class="item-card"><div class="item-card-info"><strong>${escapeHtml(h.nomeDisplay || h.nome)}</strong> concluiu "${escapeHtml(h.curso)}" com ${escapeHtml(h.nota)}</div><div class="item-card-meta">${escapeHtml(h.data)}</div></div>
-    `).join('') : '<div class="empty">Sem atividades recentes.</div>';
-  }
+  const ra = document.getElementById('recent-activities');
+  if (ra) ra.innerHTML = recentes.length ? recentes.map(h => `<div class="item-card"><div class="item-card-info"><strong>${escapeHtml(h.nomeDisplay||h.nome)}</strong> concluiu "${escapeHtml(h.curso)}" com ${escapeHtml(h.nota)}</div><div class="item-card-meta">${escapeHtml(h.data)}</div></div>`).join('') : '<div class="empty">Sem atividades recentes.</div>';
   
   renderPrazosProximos();
 }
 
 function renderPrazosProximos() {
-  const container = document.getElementById('prazos-proximos');
-  if (!container) return;
-  
+  const c = document.getElementById('prazos-proximos'); if (!c) return;
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const pendentes = atribuicoes.filter(a => !['concluido','concluída','Concluido','Concluído'].includes(a.status) && a.prazo);
+  const prox = pendentes.map(a => {
+    let d = a.prazo.includes('/') ? new Date(a.prazo.split('/')[2], a.prazo.split('/')[1]-1, a.prazo.split('/')[0]) : new Date(a.prazo);
+    d.setHours(23,59,59,999);
+    return {...a, dias: Math.ceil((d - hoje) / 86400000)};
+  }).filter(a => a.dias <= 7 && a.dias >= 0).sort((a,b) => a.dias - b.dias);
   
-  const proximos = pendentes.map(a => {
-    let prazoDate = a.prazo.includes('/') ? new Date(a.prazo.split('/')[2], a.prazo.split('/')[1]-1, a.prazo.split('/')[0]) : new Date(a.prazo);
-    prazoDate.setHours(23,59,59,999);
-    const dias = Math.ceil((prazoDate - hoje) / (1000*60*60*24));
-    return {...a, diasRestantes: dias};
-  }).filter(a => a.diasRestantes <= 7 && a.diasRestantes >= 0).sort((a,b) => a.diasRestantes - b.diasRestantes);
-  
-  if (!proximos.length) {
-    container.innerHTML = '<div class="empty">✅ Nenhuma formação próxima do prazo.</div>';
-    return;
-  }
-  
-  container.innerHTML = proximos.map(a => {
-    const urgente = a.diasRestantes <= 2;
-    let icon = a.diasRestantes === 0 ? '🚨' : (a.diasRestantes === 1 ? '⚠️' : (a.diasRestantes <= 3 ? '⏰' : '📅'));
-    let texto = a.diasRestantes === 0 ? 'HOJE!' : (a.diasRestantes === 1 ? 'AMANHÃ!' : `${a.diasRestantes} dias`);
-    return `
-      <div class="item-card" style="border-left:4px solid ${urgente ? 'var(--danger)' : 'var(--warning)'};">
-        <div class="item-card-info">
-          <div class="item-card-title">${icon} ${escapeHtml(a.colaboradorNome)} - ${escapeHtml(a.cursoNome)}</div>
-          <div class="item-card-meta" style="color:${urgente ? 'var(--danger)' : 'var(--warning)'};">⏳ ${texto} (${escapeHtml(a.prazo)})</div>
-        </div>
-        <div class="item-card-actions">
-          <button class="btn-relembrar-dashboard" data-id="${a.id}" style="background:var(--info);color:white;border:none;padding:6px 12px;border-radius:20px;cursor:pointer;">📧 Relembrar</button>
-        </div>
-      </div>
-    `;
+  if (!prox.length) { c.innerHTML = '<div class="empty">✅ Nenhuma formação próxima do prazo.</div>'; return; }
+  c.innerHTML = prox.map(a => {
+    const urg = a.dias <= 2;
+    const icon = a.dias === 0 ? '🚨' : (a.dias === 1 ? '⚠️' : (a.dias <= 3 ? '⏰' : '📅'));
+    const txt = a.dias === 0 ? 'HOJE!' : (a.dias === 1 ? 'AMANHÃ!' : `${a.dias} dias`);
+    return `<div class="item-card" style="border-left:4px solid ${urg ? 'var(--danger)' : 'var(--warning)'};"><div class="item-card-info"><div class="item-card-title">${icon} ${escapeHtml(a.colaboradorNome)} - ${escapeHtml(a.cursoNome)}</div><div class="item-card-meta" style="color:${urg ? 'var(--danger)' : 'var(--warning)'};">⏳ ${txt} (${escapeHtml(a.prazo)})</div></div><div class="item-card-actions"><button class="btn-relembrar-dash" data-id="${a.id}" style="background:var(--info);color:white;border:none;padding:6px 12px;border-radius:20px;cursor:pointer;">📧 Relembrar</button></div></div>`;
   }).join('');
-  
-  document.querySelectorAll('.btn-relembrar-dashboard').forEach(btn => btn.addEventListener('click', () => relembrarColaborador(btn.dataset.id)));
+  document.querySelectorAll('.btn-relembrar-dash').forEach(b => b.addEventListener('click', () => relembrarColaborador(b.dataset.id)));
 }
 
-// ==================== ATRIBUIÇÕES ====================
+// ==================== ATRIBUIÇÃO INDIVIDUAL ====================
 function prepararAtribuicao() {
-  const selColab = document.getElementById('select-colaborador');
-  const selForm = document.getElementById('select-formacao');
-  if (selColab) selColab.innerHTML = '<option value="">Selecione...</option>' + colaboradores.sort((a,b)=> (parseInt(a.matricula)||999999) - (parseInt(b.matricula)||999999)).map(c => `<option value="${c.id}">${escapeHtml(c.nome)} (${c.matricula||c.user})</option>`).join('');
-  if (selForm) selForm.innerHTML = '<option value="">Selecione...</option>' + formacoes.map(f => `<option value="${f.id}">${escapeHtml(f.nome)}</option>`).join('');
+  const selC = document.getElementById('select-colaborador');
+  const selF = document.getElementById('select-formacao');
+  if (selC) selC.innerHTML = '<option value="">Selecione...</option>' + [...colaboradores].sort((a,b) => (parseInt(a.matricula)||999999) - (parseInt(b.matricula)||999999)).map(c => `<option value="${c.id}">${escapeHtml(c.nome)} (${c.matricula||c.user})</option>`).join('');
+  if (selF) selF.innerHTML = '<option value="">Selecione...</option>' + formacoes.map(f => `<option value="${f.id}">${escapeHtml(f.nome)}</option>`).join('');
 }
 
 async function gerarCodigoAtribuicao() {
@@ -228,11 +173,11 @@ async function gerarCodigoAtribuicao() {
   const prazo = document.getElementById('atrib-prazo')?.value || '31/12/2026';
   if (!colabId || !cursoId) { showToast('❌ Selecione colaborador e formação'); return; }
   
-  const colaborador = colaboradores.find(c => c.id === colabId);
-  const formacao = formacoes.find(f => f.id === cursoId);
-  if (!colaborador || !formacao) return;
+  const colab = colaboradores.find(c => c.id === colabId);
+  const form = formacoes.find(f => f.id === cursoId);
+  if (!colab || !form) return;
   
-  const user = colaborador.user || colaborador.email;
+  const user = colab.user || colab.email;
   const existente = atribuicoes.find(a => a.colaboradorUser === user && a.cursoId === cursoId && !['concluido','concluída','Concluido','Concluído'].includes(a.status));
   if (existente) {
     showToast('⚠️ Já atribuído!');
@@ -244,14 +189,14 @@ async function gerarCodigoAtribuicao() {
   
   showToast('⏳ A gerar...');
   const tokenId = Date.now().toString(36) + Math.random().toString(36).substr(2,4);
-  const tokenData = { user, nome: colaborador.nome, email: colaborador.email||'', matricula: colaborador.matricula||'', cursoId, cursoNome: formacao.nome, prazo, ts: Date.now(), createdAt: new Date().toISOString() };
+  const tokenData = { user, nome: colab.nome, email: colab.email||'', matricula: colab.matricula||'', cursoId, cursoNome: form.nome, prazo, ts: Date.now() };
   
   if (!window.firebaseReady || !window.db) { showToast('❌ Sem ligação'); return; }
   
   try {
     await window.db.collection('tokens').doc(tokenId).set(tokenData);
     const link = `${window.location.origin}/formacao.html?t=${tokenId}`;
-    const nova = { id: Date.now().toString()+'_'+user, colaboradorId: colaborador.id, colaboradorUser: user, colaboradorNome: colaborador.nome, colaboradorEmail: colaborador.email||'', colaboradorMatricula: colaborador.matricula||'', cursoId, cursoNome: formacao.nome, prazo, status: 'pendente', dataAtribuicao: new Date().toISOString(), token: tokenId, link };
+    const nova = { id: Date.now().toString()+'_'+user.replace(/[^a-z0-9]/gi,'_'), colaboradorId: colab.id, colaboradorUser: user, colaboradorNome: colab.nome, colaboradorEmail: colab.email||'', colaboradorMatricula: colab.matricula||'', cursoId, cursoNome: form.nome, prazo, status: 'pendente', dataAtribuicao: new Date().toISOString(), token: tokenId, link };
     await window.db.collection('atribuicoes').doc(nova.id).set(nova);
     atribuicoes.push(nova);
     document.getElementById('resultado-atribuicao').style.display = 'block';
@@ -264,44 +209,56 @@ async function gerarCodigoAtribuicao() {
 function EnvioEmail() {
   const colab = colaboradores.find(c => c.id === document.getElementById('select-colaborador')?.value);
   const link = window.linkAtualGerado || document.getElementById('link-gerado')?.textContent;
+  const prazo = document.getElementById('atrib-prazo')?.value || '31/12/2026';
   if (!colab?.email) { showToast('❌ Sem email'); return; }
-  window.location.href = `mailto:${colab.email}?subject=Birkenstock - Nova Formação&body=Olá ${colab.nome},\n\nLink: ${link}\nPrazo: ${document.getElementById('atrib-prazo')?.value}`;
+  const assunto = encodeURIComponent('Birkenstock - Nova Formação Atribuída');
+  const corpo = encodeURIComponent(`Olá ${colab.nome},\n\nFoi-lhe atribuída uma nova formação na plataforma Birkenstock S&CC Portugal.\n\nFormação: ${document.getElementById('select-formacao')?.selectedOptions[0]?.text || 'Formação'}\nPrazo: ${prazo}\n\nAceda através do link:\n${link}\n\nAtenciosamente,\nEquipa de Formação Birkenstock`);
+  window.location.href = `mailto:${colab.email}?subject=${assunto}&body=${corpo}`;
+  showToast(`📧 A abrir email para ${colab.nome}`);
 }
 
-function enviarEmailIndividual(email, nome, link, prazo, curso) {
+function enviarEmailIndividual(email, nome, link, prazo, cursoNome) {
   if (!email) return;
-  window.location.href = `mailto:${email}?subject=Birkenstock - ${curso}&body=Olá ${nome},\n\nFormação: ${curso}\nLink: ${link}\nPrazo: ${prazo}`;
+  const assunto = encodeURIComponent(`Birkenstock - Formação: ${cursoNome}`);
+  const corpo = encodeURIComponent(`Olá ${nome},\n\nFoi-lhe atribuída a formação "${cursoNome}" na plataforma Birkenstock S&CC Portugal.\n\nPrazo: ${prazo}\n\nAceda através do link:\n${link}\n\nAtenciosamente,\nEquipa de Formação Birkenstock`);
+  window.location.href = `mailto:${email}?subject=${assunto}&body=${corpo}`;
 }
 
 function enviarEmailsMassa() {
   if (!linksGerados.length) return;
-  linksGerados.filter(l=>l.email).forEach(l => window.open(`mailto:${l.email}?subject=Birkenstock - ${l.cursoNome}&body=Olá ${l.nome},\n\nFormação: ${l.cursoNome}\nLink: ${l.link}\nPrazo: ${l.prazo}`));
-  showToast(`📧 ${linksGerados.length} emails`);
+  linksGerados.filter(l => l.email).forEach(l => {
+    const assunto = encodeURIComponent(`Birkenstock - Formação: ${l.cursoNome}`);
+    const corpo = encodeURIComponent(`Olá ${l.nome},\n\nFoi-lhe atribuída a formação "${l.cursoNome}".\n\nPrazo: ${l.prazo}\n\nAceda através do link:\n${l.link}\n\nAtenciosamente,\nEquipa de Formação Birkenstock`);
+    window.open(`mailto:${l.email}?subject=${assunto}&body=${corpo}`);
+  });
+  showToast(`📧 A abrir ${linksGerados.length} emails...`);
 }
 
 function relembrarColaborador(id) {
-  const a = atribuicoes.find(x => x.id === id);
-  if (a) window.location.href = `mailto:${a.colaboradorEmail}?subject=Lembrete: ${a.cursoNome}&body=Olá ${a.colaboradorNome},\n\nRecordamos que tem a formação "${a.cursoNome}" pendente.\nPrazo: ${a.prazo}\nLink: ${a.link}`;
+  const a = atribuicoes.find(x => x.id === id); if (!a) return;
+  const assunto = encodeURIComponent(`Birkenstock - Lembrete: ${a.cursoNome}`);
+  const corpo = encodeURIComponent(`Olá ${a.colaboradorNome},\n\nRecordamos que ainda tem pendente a formação "${a.cursoNome}".\n\nPrazo: ${a.prazo || '---'}\n\nAceda através do link:\n${a.link}\n\nAtenciosamente,\nEquipa de Formação Birkenstock`);
+  window.location.href = `mailto:${a.colaboradorEmail}?subject=${assunto}&body=${corpo}`;
 }
 
 function copiarLink() {
   const link = window.linkAtualGerado || document.getElementById('link-gerado')?.textContent;
-  if (link) navigator.clipboard?.writeText(link).then(()=>showToast('✅ Copiado!'));
+  if (link) navigator.clipboard?.writeText(link).then(() => showToast('✅ Copiado!'));
 }
 
 // ==================== FORMAÇÕES ====================
 function renderFormacoesLista() {
-  const c = document.getElementById('formacoes-list');
-  if (c) c.innerHTML = formacoes.map(f => `<div class="item-card"><div class="item-card-info"><div class="item-card-title">📘 ${escapeHtml(f.nome)}</div><div class="item-card-meta">${f.modulos?.length||0} módulos · ${f.perguntas?.length||0} perguntas</div></div><div class="item-card-actions"><button class="btn-editar-formacao" data-id="${f.id}" style="color:var(--info)">✏️</button><button class="btn-apagar-formacao" data-id="${f.id}" style="color:var(--danger)">🗑️</button></div></div>`).join('');
+  const c = document.getElementById('formacoes-list'); if (!c) return;
+  c.innerHTML = formacoes.map(f => `<div class="item-card"><div class="item-card-info"><div class="item-card-title">📘 ${escapeHtml(f.nome)}</div><div class="item-card-meta">${f.modulos?.length||0} módulos · ${f.perguntas?.length||0} perguntas</div></div><div class="item-card-actions"><button class="btn-editar-formacao" data-id="${f.id}" style="color:var(--info)">✏️</button><button class="btn-apagar-formacao" data-id="${f.id}" style="color:var(--danger)">🗑️</button></div></div>`).join('');
   document.querySelectorAll('.btn-editar-formacao').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); editarFormacao(b.dataset.id); }));
   document.querySelectorAll('.btn-apagar-formacao').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); apagarFormacao(b.dataset.id); }));
 }
 
 function editarFormacao(id) {
   const f = formacoes.find(x => x.id === id); if (!f) return;
-  document.getElementById('f-titulo').value = f.nome;
+  document.getElementById('f-titulo').value = f.nome || '';
   document.getElementById('f-duracao').value = f.duracao || '';
-  document.getElementById('f-descricao').value = f.conteudoProgramatico || f.descricao || '';
+  document.getElementById('f-descricao').value = f.descricao || f.conteudoProgramatico || '';
   modulos = f.modulos ? [...f.modulos] : [];
   perguntas = f.perguntas ? [...f.perguntas] : [];
   editandoFormacaoId = id;
@@ -330,7 +287,7 @@ function apagarFormacao(id) {
 function publicarFormacao() {
   const titulo = document.getElementById('f-titulo')?.value.trim();
   if (!titulo || !modulos.length) { showToast('❌ Título e pelo menos 1 módulo obrigatórios'); return; }
-  const nova = { id: editandoFormacaoId || Date.now().toString(), nome: titulo, duracao: document.getElementById('f-duracao')?.value.trim() || '30 min', descricao: document.getElementById('f-descricao')?.value.trim(), conteudoProgramatico: document.getElementById('f-descricao')?.value.trim(), icone: '📚', modulos: [...modulos], perguntas: perguntas.map(p => ({ id: p.id, texto: p.texto, opcoes: p.opcoes, correta: p.correta })), dataCriacao: new Date().toLocaleDateString('pt-PT'), dataTimestamp: Date.now() };
+  const nova = { id: editandoFormacaoId || Date.now().toString(), nome: titulo, duracao: document.getElementById('f-duracao')?.value.trim() || '30 min', descricao: document.getElementById('f-descricao')?.value.trim(), conteudoProgramatico: document.getElementById('f-descricao')?.value.trim(), icone: '📚', modulos: [...modulos], perguntas: perguntas.map(p => ({ id: p.id, texto: p.texto, opcoes: p.opcoes, correta: p.correta })) };
   if (editandoFormacaoId) {
     const idx = formacoes.findIndex(f => f.id === editandoFormacaoId);
     if (idx !== -1) formacoes[idx] = nova;
@@ -358,14 +315,14 @@ function abrirModalModulo(tipo) {
 function editarModulo(id) {
   const m = modulos.find(x => x.id === id); if (!m) return;
   editandoModuloId = id; moduloTipoAtual = m.tipo;
-  document.getElementById('modulo-titulo').value = m.titulo;
-  document.getElementById('modulo-duracao').value = m.duracao;
+  document.getElementById('modulo-titulo').value = m.titulo || '';
+  document.getElementById('modulo-duracao').value = m.duracao || '';
   document.getElementById('modulo-conteudo-video').style.display = m.tipo==='video'?'block':'none';
   document.getElementById('modulo-conteudo-texto').style.display = m.tipo==='texto'?'block':'none';
   document.getElementById('modulo-conteudo-link').style.display = m.tipo==='link'?'block':'none';
-  if (m.tipo==='video') document.getElementById('modulo-video-url').value = m.conteudo?.url||'';
-  if (m.tipo==='texto') document.getElementById('modulo-texto-conteudo').value = m.conteudo?.texto||'';
-  if (m.tipo==='link') document.getElementById('modulo-link-url').value = m.conteudo?.url||'';
+  if (m.tipo==='video') document.getElementById('modulo-video-url').value = m.conteudo?.url || '';
+  if (m.tipo==='texto') document.getElementById('modulo-texto-conteudo').value = m.conteudo?.texto || '';
+  if (m.tipo==='link') document.getElementById('modulo-link-url').value = m.conteudo?.url || '';
   document.getElementById('modal-modulo').style.display = 'flex';
 }
 
@@ -401,16 +358,20 @@ function salvarModulo() {
 function removerModulo(id) { if (confirm('Remover?')) { modulos = modulos.filter(m => m.id !== id); renderModulos(); } }
 
 function renderModulos() {
-  const c = document.getElementById('modulos-container');
-  if (c) c.innerHTML = modulos.length ? modulos.map((m,i) => `<div class="modulo-card"><div style="flex:1"><div style="font-weight:700;">${i+1}. ${escapeHtml(m.titulo)}</div><div style="font-size:11px;">${m.tipo==='video'?'🎬':m.tipo==='texto'?'📄':'🔗'} ${m.duracao}</div></div><div style="display:flex;gap:8px;"><button class="btn-editar-modulo" data-id="${m.id}" style="background:var(--info);color:white;border:none;padding:4px 10px;border-radius:4px;">✏️</button><button class="btn-remover-modulo" data-id="${m.id}" style="background:var(--danger);color:white;border:none;padding:4px 10px;border-radius:4px;">🗑️</button></div></div>`).join('') : '<div class="alert alert-info">Nenhum módulo.</div>';
+  const c = document.getElementById('modulos-container'); if (!c) return;
+  c.innerHTML = modulos.length ? modulos.map((m,i) => `<div class="modulo-card"><div style="flex:1"><div style="font-weight:700;">${i+1}. ${escapeHtml(m.titulo)}</div><div style="font-size:11px;">${m.tipo==='video'?'🎬':m.tipo==='texto'?'📄':'🔗'} ${m.duracao}</div></div><div style="display:flex;gap:8px;"><button class="btn-editar-modulo" data-id="${m.id}" style="background:var(--info);color:white;border:none;padding:4px 10px;border-radius:4px;">✏️</button><button class="btn-remover-modulo" data-id="${m.id}" style="background:var(--danger);color:white;border:none;padding:4px 10px;border-radius:4px;">🗑️</button></div></div>`).join('') : '<div class="alert alert-info">Nenhum módulo.</div>';
   document.querySelectorAll('.btn-editar-modulo').forEach(b => b.addEventListener('click', () => editarModulo(b.dataset.id)));
   document.querySelectorAll('.btn-remover-modulo').forEach(b => b.addEventListener('click', () => removerModulo(b.dataset.id)));
 }
 
-// ==================== PERGUNTAS ====================
+// ==================== PERGUNTAS (CORRIGIDO) ====================
 function abrirModalPergunta() {
   editandoPerguntaId = null;
-  document.getElementById('pergunta-texto').value = document.getElementById('pergunta-opcao-a').value = document.getElementById('pergunta-opcao-b').value = document.getElementById('pergunta-opcao-c').value = document.getElementById('pergunta-opcao-d').value = '';
+  document.getElementById('pergunta-texto').value = '';
+  document.getElementById('pergunta-opcao-a').value = '';
+  document.getElementById('pergunta-opcao-b').value = '';
+  document.getElementById('pergunta-opcao-c').value = '';
+  document.getElementById('pergunta-opcao-d').value = '';
   document.getElementById('pergunta-correta').value = 'A';
   document.getElementById('modal-pergunta').style.display = 'flex';
 }
@@ -419,7 +380,7 @@ function editarPergunta(id) {
   const p = perguntas.find(x => x.id === id); if (!p) return;
   editandoPerguntaId = id;
   document.getElementById('pergunta-texto').value = p.texto || '';
-  const opcoes = Array.isArray(p.opcoes) ? p.opcoes : ['','','',''];
+  const opcoes = Array.isArray(p.opcoes) ? p.opcoes : ['', '', '', ''];
   document.getElementById('pergunta-opcao-a').value = opcoes[0] || '';
   document.getElementById('pergunta-opcao-b').value = opcoes[1] || '';
   document.getElementById('pergunta-opcao-c').value = opcoes[2] || '';
@@ -434,11 +395,14 @@ function salvarPergunta() {
   const opcoes = ['a','b','c','d'].map(l => document.getElementById(`pergunta-opcao-${l}`).value.trim());
   if (opcoes.some(o => !o)) { showToast('❌ Todas as opções obrigatórias'); return; }
   const correta = document.getElementById('pergunta-correta').value;
+  
   if (editandoPerguntaId) {
     const idx = perguntas.findIndex(p => p.id === editandoPerguntaId);
     if (idx !== -1) perguntas[idx] = { ...perguntas[idx], texto, opcoes, correta };
     editandoPerguntaId = null;
-  } else { perguntas.push({ id: Date.now().toString(), texto, opcoes, correta }); }
+  } else {
+    perguntas.push({ id: Date.now().toString(), texto, opcoes, correta });
+  }
   renderPerguntas();
   document.getElementById('modal-pergunta').style.display = 'none';
   showToast('✅ Pergunta salva!');
@@ -447,20 +411,32 @@ function salvarPergunta() {
 function removerPergunta(id) { if (confirm('Remover?')) { perguntas = perguntas.filter(p => p.id !== id); renderPerguntas(); } }
 
 function renderPerguntas() {
-  const c = document.getElementById('perguntas-container');
-  if (c) c.innerHTML = perguntas.length ? perguntas.map((p,i) => `<div class="pergunta-card"><div style="margin-bottom:8px;"><strong>${i+1}. ${escapeHtml(p.texto)}</strong></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:12px;"><div>A) ${escapeHtml(p.opcoes[0])}</div><div>B) ${escapeHtml(p.opcoes[1])}</div><div>C) ${escapeHtml(p.opcoes[2])}</div><div>D) ${escapeHtml(p.opcoes[3])}</div></div><div style="margin-top:8px;font-size:11px;color:var(--success);">✅ Correta: ${p.correta}</div><div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end;"><button class="btn-editar-pergunta" data-id="${p.id}" style="background:var(--info);color:white;border:none;padding:4px 10px;border-radius:4px;">✏️</button><button class="btn-remover-pergunta" data-id="${p.id}" style="background:var(--danger);color:white;border:none;padding:4px 10px;border-radius:4px;">🗑️</button></div></div>`).join('') : '<div class="alert alert-info">Nenhuma pergunta.</div>';
+  const c = document.getElementById('perguntas-container'); if (!c) return;
+  c.innerHTML = perguntas.length ? perguntas.map((p,i) => `<div class="pergunta-card"><div style="margin-bottom:8px;"><strong>${i+1}. ${escapeHtml(p.texto)}</strong></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:12px;"><div>A) ${escapeHtml(p.opcoes[0])}</div><div>B) ${escapeHtml(p.opcoes[1])}</div><div>C) ${escapeHtml(p.opcoes[2])}</div><div>D) ${escapeHtml(p.opcoes[3])}</div></div><div style="margin-top:8px;font-size:11px;color:var(--success);">✅ Correta: ${p.correta}</div><div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end;"><button class="btn-editar-pergunta" data-id="${p.id}" style="background:var(--info);color:white;border:none;padding:4px 10px;border-radius:4px;">✏️</button><button class="btn-remover-pergunta" data-id="${p.id}" style="background:var(--danger);color:white;border:none;padding:4px 10px;border-radius:4px;">🗑️</button></div></div>`).join('') : '<div class="alert alert-info">Nenhuma pergunta.</div>';
   document.querySelectorAll('.btn-editar-pergunta').forEach(b => b.addEventListener('click', () => editarPergunta(b.dataset.id)));
   document.querySelectorAll('.btn-remover-pergunta').forEach(b => b.addEventListener('click', () => removerPergunta(b.dataset.id)));
 }
 
 // ==================== COLABORADORES ====================
 function renderColabs() {
-  const t = document.getElementById('colab-list-table');
-  if (t) t.innerHTML = colaboradores.length ? colaboradores.sort((a,b)=> (parseInt(a.matricula)||999999) - (parseInt(b.matricula)||999999)).map(c => `<tr><td>${escapeHtml(c.matricula||'-')}</td><td>${escapeHtml(c.nome||c.user)}</td><td>${escapeHtml(c.email||'-')}</td><td><button class="btn-remover-colab" data-id="${c.id}">🗑️</button></td></tr>`).join('') : '<tr><td colspan="4" class="empty">Nenhum colaborador.</td></tr>';
+  const t = document.getElementById('colab-list-table'); if (!t) return;
+  t.innerHTML = colaboradores.length ? [...colaboradores].sort((a,b) => (parseInt(a.matricula)||999999) - (parseInt(b.matricula)||999999)).map(c => `<tr><td>${escapeHtml(c.matricula||'-')}</td><td>${escapeHtml(c.nome||c.user)}</td><td>${escapeHtml(c.email||'-')}</td><td><button class="btn-remover-colab" data-id="${c.id}">🗑️</button></td></tr>`).join('') : '<tr><td colspan="4" class="empty">Nenhum colaborador.</td></tr>';
   document.querySelectorAll('.btn-remover-colab').forEach(b => b.addEventListener('click', () => removerColab(b.dataset.id)));
 }
 
-function removerColab(id) { if (confirm('Remover?')) { colaboradores = colaboradores.filter(c => c.id !== id); salvarColaboradores(); renderColabs(); atualizarSelectores(); atualizarDashboard(); renderAcompanhamento(); } }
+async function removerColab(id) {
+  if (!confirm('Remover colaborador? Esta ação não pode ser desfeita.')) return;
+  const colab = colaboradores.find(c => c.id === id);
+  if (colab) {
+    colaboradores = colaboradores.filter(c => c.id !== id);
+    await salvarColaboradores();
+    if (window.firebaseReady && window.db) {
+      try { await window.db.collection('colaboradores').doc(id).delete(); } catch(e) {}
+    }
+    renderColabs(); atualizarSelectores(); atualizarDashboard(); renderAcompanhamento();
+    showToast('✅ Colaborador removido!');
+  }
+}
 
 async function saveUser() {
   const matricula = document.getElementById('u-matricula')?.value.trim() || '';
@@ -502,7 +478,6 @@ async function importColaboradores(files) {
         colaboradores.push(novo); imported++;
       } catch(err) { console.error(err); }
     }
-    localStorage.setItem('colaboradores', JSON.stringify(colaboradores));
     salvarColaboradores(); renderColabs(); atualizarSelectores(); atualizarDashboard(); renderAcompanhamento();
     showToast(`✅ ${imported} importados!`);
   };
@@ -510,7 +485,7 @@ async function importColaboradores(files) {
 }
 
 function downloadModeloCSV() {
-  const csv = "matricula,nome,email,password\n000,Tester,tester@birkenstock.pt,birkenstock2024";
+  const csv = "matricula,nome,email,password\n001,João Silva,joao@birkenstock.pt,birkenstock2024";
   const blob = new Blob(["\uFEFF"+csv], {type:'text/csv'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'modelo.csv'; a.click();
 }
@@ -527,7 +502,7 @@ function atualizarSelectores() {
   const grid = document.getElementById('colab-selector-grid');
   if (grid) {
     const cursoId = curso?.value;
-    grid.innerHTML = colaboradores.sort((a,b)=> (parseInt(a.matricula)||999999) - (parseInt(b.matricula)||999999)).map(c => {
+    grid.innerHTML = [...colaboradores].sort((a,b) => (parseInt(a.matricula)||999999) - (parseInt(b.matricula)||999999)).map(c => {
       const concluido = historicos.some(h => (h.nome===c.user||h.nomeDisplay===c.nome) && h.cursoId===cursoId);
       const atribuido = atribuicoes.some(a => a.colaboradorUser===c.user && a.cursoId===cursoId && !['concluido','concluída','Concluido','Concluído'].includes(a.status));
       let status = ''; if (concluido) status = '<span title="Concluído">✅</span>'; else if (atribuido) status = '<span title="Atribuído">⏳</span>';
@@ -552,6 +527,7 @@ async function gerarLinksMassa() {
   const baseUrl = window.location.origin + '/formacao.html';
   linksGerados = []; let sucesso = 0, reutilizados = 0;
   showToast('⏳ A gerar...');
+  
   for (const cb of selected) {
     const c = colaboradores.find(x => x.id === cb.value); if (!c) continue;
     const user = c.user || c.email;
@@ -561,16 +537,17 @@ async function gerarLinksMassa() {
       const tokenId = Date.now().toString(36) + Math.random().toString(36).substr(2,4) + '_' + sucesso;
       await window.db.collection('tokens').doc(tokenId).set({ user, nome: c.nome, email: c.email||'', matricula: c.matricula||'', cursoId, cursoNome, prazo, createdAt: new Date().toISOString() });
       const link = `${baseUrl}?t=${tokenId}`;
-      const nova = { id: Date.now().toString()+'_'+user, colaboradorId: c.id, colaboradorUser: user, colaboradorNome: c.nome, colaboradorEmail: c.email||'', colaboradorMatricula: c.matricula||'', cursoId, cursoNome, prazo, status: 'pendente', dataCriacao: new Date().toISOString(), token: tokenId, link };
+      const nova = { id: Date.now().toString()+'_'+user.replace(/[^a-z0-9]/gi,'_'), colaboradorId: c.id, colaboradorUser: user, colaboradorNome: c.nome, colaboradorEmail: c.email||'', colaboradorMatricula: c.matricula||'', cursoId, cursoNome, prazo, status: 'pendente', dataCriacao: new Date().toISOString(), token: tokenId, link };
       await window.db.collection('atribuicoes').doc(nova.id).set(nova);
       atribuicoes.push(nova);
       linksGerados.push({ nome: c.nome, email: c.email, link, prazo, cursoNome, status: 'novo' });
       sucesso++;
     } catch(e) { console.error(e); }
   }
+  
   const div = document.getElementById('links-gerados');
   if (div) {
-    document.getElementById('links-list').innerHTML = linksGerados.map(l => `<div class="item-card" style="flex-direction:column;"><div style="display:flex;justify-content:space-between;"><div><strong>${escapeHtml(l.nome)}</strong> ${l.status==='reutilizado'?'(Já atribuído)':''}</div><div><button class="btn-copiar-link-individual" data-link="${l.link}">📋</button>${l.email?`<button class="btn-enviar-email-individual" data-email="${l.email}" data-nome="${l.nome}" data-link="${l.link}" data-prazo="${l.prazo}" data-curso="${l.cursoNome}">📧</button>`:''}</div></div><div style="margin-top:8px;padding:8px;background:var(--bg);border-radius:6px;font-size:11px;word-break:break-all;">${l.link}</div><div style="margin-top:6px;font-size:10px;">📅 ${l.prazo}</div></div>`).join('');
+    document.getElementById('links-list').innerHTML = linksGerados.map(l => `<div class="item-card" style="flex-direction:column;"><div style="display:flex;justify-content:space-between;"><div><strong>${escapeHtml(l.nome)}</strong> ${l.status==='reutilizado'?'<span style="background:var(--info-bg);padding:2px 8px;border-radius:12px;">Já atribuído</span>':'<span style="background:var(--success-bg);padding:2px 8px;border-radius:12px;">Novo</span>'}</div><div><button class="btn-copiar-link-individual" data-link="${l.link}">📋</button>${l.email?`<button class="btn-enviar-email-individual" data-email="${l.email}" data-nome="${l.nome}" data-link="${l.link}" data-prazo="${l.prazo}" data-curso="${l.cursoNome}">📧</button>`:''}</div></div><div style="margin-top:8px;padding:8px;background:var(--bg);border-radius:6px;font-size:11px;word-break:break-all;">${l.link}</div><div style="margin-top:6px;font-size:10px;">📅 ${l.prazo}</div></div>`).join('');
     document.querySelectorAll('.btn-copiar-link-individual').forEach(b => b.addEventListener('click', () => copiarLinkIndividual(b.dataset.link)));
     document.querySelectorAll('.btn-enviar-email-individual').forEach(b => b.addEventListener('click', () => enviarEmailIndividual(b.dataset.email, b.dataset.nome, b.dataset.link, b.dataset.prazo, b.dataset.curso)));
     div.style.display = 'block';
@@ -582,13 +559,20 @@ async function gerarLinksMassa() {
 function copiarLinkIndividual(link) { navigator.clipboard?.writeText(link).then(() => showToast('🔗 Copiado!')); }
 function copiarTodosLinks() { if (linksGerados.length) navigator.clipboard?.writeText(linksGerados.map(l => `${l.nome}\n${l.link}`).join('\n\n')).then(() => showToast('✅ Copiados!')); }
 
-// ==================== ACOMPANHAMENTO ====================
+// ==================== ACOMPANHAMENTO (CORRIGIDO - SEM DUPLICADOS) ====================
 function renderAcompanhamento() {
   const container = document.getElementById('acompanhar-lista'); if (!container) return;
   const filtroForm = document.getElementById('filtro-formacao-acompanhar')?.value;
   const filtroStatus = document.getElementById('filtro-status-acompanhar')?.value;
-  let filtered = atribuicoes.filter(a => (!filtroForm || a.cursoId === filtroForm) && (!filtroStatus || a.status === filtroStatus));
+  
+  // Remover duplicados
+  const uniqueAtribuicoes = [];
+  const ids = new Set();
+  for (const a of atribuicoes) { if (!ids.has(a.id)) { ids.add(a.id); uniqueAtribuicoes.push(a); } }
+  
+  let filtered = uniqueAtribuicoes.filter(a => (!filtroForm || a.cursoId === filtroForm) && (!filtroStatus || a.status === filtroStatus));
   if (!filtered.length) { container.innerHTML = '<div class="empty">Nenhuma atribuição.</div>'; return; }
+  
   const grouped = {}; filtered.forEach(a => { if (!grouped[a.cursoId]) grouped[a.cursoId] = { nome: a.cursoNome, atribuicoes: [] }; grouped[a.cursoId].atribuicoes.push(a); });
   container.innerHTML = Object.values(grouped).map(g => {
     const concluidos = g.atribuicoes.filter(a => ['concluido','concluída','Concluido','Concluído'].includes(a.status));
@@ -617,9 +601,7 @@ function renderHistorico() {
     select.innerHTML = '<option value="">Todos</option>' + nomes.map(n => `<option>${escapeHtml(n)}</option>`).join('');
   }
   tbody.innerHTML = filtered.length ? filtered.map(h => `<tr><td>${escapeHtml(h.nomeDisplay||h.nome)}</td><td>${escapeHtml(h.email||'-')}</td><td>${escapeHtml(h.curso)}</td><td>${escapeHtml(h.data)}</td><td><span class="badge badge-success">${escapeHtml(h.nota)}</span></td><td><button class="btn-ver-certificado-historico" data-id="${h.id}">📄</button></td></tr>`).join('') : '<tr><td colspan="6" class="empty">Nenhum resultado.</td></tr>';
-  document.querySelectorAll('.btn-ver-certificado-historico').forEach(b => b.addEventListener('click', () => {
-    const h = historicos.find(x => x.id === b.dataset.id); if (h) mostrarCertificado(h);
-  }));
+  document.querySelectorAll('.btn-ver-certificado-historico').forEach(b => b.addEventListener('click', () => { const h = historicos.find(x => x.id === b.dataset.id); if (h) mostrarCertificado(h); }));
 }
 
 function mostrarCertificado(h) {
@@ -650,7 +632,8 @@ function exportarHistoricoExcel() {
 
 function exportarAcompanhamentoExcel() {
   if (!atribuicoes.length) return;
-  downloadExcel(atribuicoes.map(a => ({ Formação: a.cursoNome, Duração: formacoes.find(f=>f.id===a.cursoId)?.duracao||'—', Colaborador: a.colaboradorNome, Matrícula: a.colaboradorMatricula, Email: a.colaboradorEmail, Prazo: a.prazo, Status: ['concluido','concluída','Concluido','Concluído'].includes(a.status)?'Concluído':'Pendente' })), 'acompanhamento');
+  const unique = []; const ids = new Set(); atribuicoes.forEach(a => { if (!ids.has(a.id)) { ids.add(a.id); unique.push(a); } });
+  downloadExcel(unique.map(a => ({ Formação: a.cursoNome, Duração: formacoes.find(f=>f.id===a.cursoId)?.duracao||'—', Colaborador: a.colaboradorNome, Matrícula: a.colaboradorMatricula, Email: a.colaboradorEmail, Prazo: a.prazo, Status: ['concluido','concluída','Concluido','Concluído'].includes(a.status)?'Concluído':'Pendente' })), 'acompanhamento');
 }
 
 function limparHistorico() { if (confirm('Apagar TUDO?')) { historicos = []; salvarHistoricos(); renderHistorico(); atualizarDashboard(); renderAcompanhamento(); } }
@@ -735,7 +718,6 @@ function setupRealtimeListeners() {
   window.db.collection('historicos').onSnapshot(s => { historicos = s.docs.map(d => ({id:d.id,...d.data()})); if (document.getElementById('sec-historico')?.classList.contains('active')) renderHistorico(); if (document.getElementById('sec-acompanhar')?.classList.contains('active')) renderAcompanhamento(); if (document.getElementById('sec-overview')?.classList.contains('active')) { atualizarDashboard(); renderPrazosProximos(); } });
   window.db.collection('atribuicoes').onSnapshot(s => { atribuicoes = s.docs.map(d => ({id:d.id,...d.data()})); if (document.getElementById('sec-acompanhar')?.classList.contains('active')) renderAcompanhamento(); if (document.getElementById('sec-overview')?.classList.contains('active')) { atualizarDashboard(); renderPrazosProximos(); } if (document.getElementById('sec-atribuir-massa')?.classList.contains('active')) atualizarSelectores(); });
   window.db.collection('formacoes').onSnapshot(s => { formacoes = s.docs.map(d => ({id:d.id,...d.data()})); if (document.getElementById('sec-formacoes')?.classList.contains('active')) renderFormacoesLista(); if (document.getElementById('sec-overview')?.classList.contains('active')) atualizarDashboard(); atualizarSelectores(); });
-  console.log('✅ Listeners configurados!');
 }
 
 function initAdmin() {
@@ -753,26 +735,12 @@ function initAdmin() {
 }
 
 // ==================== EXPOR GLOBALMENTE ====================
-window.gerarTokenSeguro = gerarTokenSeguro;
-window.carregarDadosExemplo = carregarDadosExemplo;
-window.salvarFormacoes = salvarFormacoes;
-window.salvarColaboradores = salvarColaboradores;
-window.salvarAtribuicoes = salvarAtribuicoes;
-window.salvarHistoricos = salvarHistoricos;
-window.getColaboradoresList = getColaboradoresList;
-window.getFormacoesList = getFormacoesList;
-window.atualizarDashboard = atualizarDashboard;
-window.prepararAtribuicao = prepararAtribuicao;
 window.gerarCodigoAtribuicao = gerarCodigoAtribuicao;
 window.EnvioEmail = EnvioEmail;
 window.enviarEmailIndividual = enviarEmailIndividual;
 window.enviarEmailsMassa = enviarEmailsMassa;
 window.relembrarColaborador = relembrarColaborador;
 window.copiarLink = copiarLink;
-window.renderFormacoesLista = renderFormacoesLista;
-window.editarFormacao = editarFormacao;
-window.cancelarEdicao = cancelarEdicao;
-window.apagarFormacao = apagarFormacao;
 window.abrirModalModulo = abrirModalModulo;
 window.editarModulo = editarModulo;
 window.salvarModulo = salvarModulo;
@@ -783,26 +751,20 @@ window.editarPergunta = editarPergunta;
 window.salvarPergunta = salvarPergunta;
 window.removerPergunta = removerPergunta;
 window.renderPerguntas = renderPerguntas;
-window.renderColabs = renderColabs;
-window.removerColab = removerColab;
 window.saveUser = saveUser;
 window.importColaboradores = importColaboradores;
 window.downloadModeloCSV = downloadModeloCSV;
 window.exportarColaboradoresExcel = exportarColaboradoresExcel;
-window.atualizarSelectores = atualizarSelectores;
 window.selecionarTodos = selecionarTodos;
 window.deselecionarTodos = deselecionarTodos;
 window.gerarLinksMassa = gerarLinksMassa;
 window.copiarLinkIndividual = copiarLinkIndividual;
 window.copiarTodosLinks = copiarTodosLinks;
-window.renderAcompanhamento = renderAcompanhamento;
 window.visualizarCertificadoAtribuicao = visualizarCertificadoAtribuicao;
 window.imprimirCertificadoModal = imprimirCertificadoModal;
 window.baixarPDFCertificadoModal = baixarPDFCertificadoModal;
 window.exportarAcompanhamentoExcel = exportarAcompanhamentoExcel;
 window.publicarFormacao = publicarFormacao;
-window.renderHistorico = renderHistorico;
-window.visualizarCertificadoHistorico = mostrarCertificado;
 window.exportarHistoricoExcel = exportarHistoricoExcel;
 window.limparHistorico = limparHistorico;
 window.inserirPlaceholder = inserirPlaceholder;
@@ -816,4 +778,4 @@ window.switchTab = switchTab;
 window.initAdmin = initAdmin;
 
 document.addEventListener('DOMContentLoaded', initAdmin);
-console.log('✅ admin.js carregado - versão final corrigida');
+console.log('✅ admin.js - VERSÃO FINAL CORRIGIDA');
