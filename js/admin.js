@@ -250,7 +250,7 @@ function prepararAtribuicao() {
     }
 }
 
-function gerarCodigoAtribuicao() {
+async function gerarCodigoAtribuicao() {
     const colabId = document.getElementById('select-colaborador')?.value;
     const cursoId = document.getElementById('select-formacao')?.value;
     const prazo = document.getElementById('atrib-prazo')?.value || '31/12/2026';
@@ -262,6 +262,9 @@ function gerarCodigoAtribuicao() {
     const formacao = formacoes.find(f => f.id === cursoId);
     if (!colaborador || !formacao) { showToast('❌ Dados não encontrados'); return; }
     
+    // Mostrar loading
+    showToast('⏳ A gerar link...');
+    
     const tokenId = Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
     
     const tokenData = { 
@@ -272,42 +275,54 @@ function gerarCodigoAtribuicao() {
         cursoId: cursoId, 
         cursoNome: formacao.nome,
         prazo: prazo, 
-        ts: Date.now() 
+        ts: Date.now(),
+        createdAt: new Date().toISOString()
     };
     
-    localStorage.setItem(`token_${tokenId}`, JSON.stringify(tokenData));
-    
-    if (window.firebaseReady && window.db) {
-        window.db.collection('tokens').doc(tokenId).set(tokenData);
+    // 🔥 GUARDAR NO FIRESTORE (OBRIGATÓRIO)
+    if (!window.firebaseReady || !window.db) {
+        showToast('❌ Erro: Sem ligação à base de dados online.');
+        return;
     }
     
-    const urlBase = window.location.origin + window.location.pathname.replace('admin.html', '') + 'formacao.html';
-    const linkFinal = `${urlBase}?t=${tokenId}`;
-    
-    const novaAtribuicao = {
-        id: Date.now().toString(),
-        colaboradorId: colaborador.id,
-        colaboradorUser: colaborador.user || colaborador.email,
-        colaboradorNome: colaborador.nome,
-        colaboradorEmail: colaborador.email || '',
-        colaboradorMatricula: colaborador.matricula || '',
-        cursoId: cursoId,
-        cursoNome: formacao.nome,
-        prazo: prazo,
-        status: 'pendente',
-        dataAtribuicao: new Date().toISOString(),
-        token: tokenId,
-        link: linkFinal
-    };
-    
-    atribuicoes.push(novaAtribuicao);
-    salvarAtribuicoes();
-    
-    document.getElementById('resultado-atribuicao').style.display = 'block';
-    document.getElementById('link-gerado').textContent = linkFinal;
-    window.linkAtualGerado = linkFinal;
-    
-    showToast("✅ Atribuição registada com sucesso!");
+    try {
+        // Guardar token no Firestore
+        await window.db.collection('tokens').doc(tokenId).set(tokenData);
+        console.log('☁️ Token guardado no Firestore:', tokenId);
+        
+        const urlBase = window.location.origin + window.location.pathname.replace('admin.html', '') + 'formacao.html';
+        const linkFinal = `${urlBase}?t=${tokenId}`;
+        
+        const novaAtribuicao = {
+            id: Date.now().toString(),
+            colaboradorId: colaborador.id,
+            colaboradorUser: colaborador.user || colaborador.email,
+            colaboradorNome: colaborador.nome,
+            colaboradorEmail: colaborador.email || '',
+            colaboradorMatricula: colaborador.matricula || '',
+            cursoId: cursoId,
+            cursoNome: formacao.nome,
+            prazo: prazo,
+            status: 'pendente',
+            dataAtribuicao: new Date().toISOString(),
+            token: tokenId,
+            link: linkFinal
+        };
+        
+        // Guardar atribuição no Firestore
+        await window.db.collection('atribuicoes').doc(novaAtribuicao.id).set(novaAtribuicao);
+        atribuicoes.push(novaAtribuicao);
+        
+        document.getElementById('resultado-atribuicao').style.display = 'block';
+        document.getElementById('link-gerado').textContent = linkFinal;
+        window.linkAtualGerado = linkFinal;
+        
+        showToast("✅ Atribuição registada com sucesso!");
+        
+    } catch (error) {
+        console.error('❌ Erro ao guardar no Firestore:', error);
+        showToast('❌ Erro ao gerar link: ' + error.message);
+    }
 }
 
 function EnvioEmail() {
@@ -728,58 +743,41 @@ async function saveUser() {
     return;
   }
   
-  // Mostrar loading
+  if (!window.firebaseReady || !window.auth || !window.db) {
+    showToast('❌ Erro: Sem ligação à base de dados online.');
+    return;
+  }
+  
   const btn = document.getElementById('btn-save-user');
   const originalText = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> A criar...';
   
   try {
-    let firebaseUid = null;
-    
     // 1. Criar utilizador no Firebase Authentication
-    if (window.firebaseReady && window.auth) {
-      try {
-        const userCredential = await window.auth.createUserWithEmailAndPassword(email, pass);
-        firebaseUid = userCredential.user.uid;
-        console.log('✅ Utilizador criado no Firebase Auth:', firebaseUid);
-      } catch (authError) {
-        console.error('Erro Firebase Auth:', authError);
-        
-        // Se o email já existir
-        if (authError.code === 'auth/email-already-in-use') {
-          showToast('⚠️ Email já registado no sistema.');
-          btn.disabled = false;
-          btn.innerHTML = originalText;
-          return;
-        }
-        
-        throw authError;
-      }
-    }
+    const userCredential = await window.auth.createUserWithEmailAndPassword(email, pass);
+    const firebaseUid = userCredential.user.uid;
+    console.log('✅ Utilizador criado no Firebase Auth:', firebaseUid);
     
     // 2. Criar objeto do colaborador
     const user = email.split('@')[0].toLowerCase();
     const novoColab = { 
-      id: firebaseUid || Date.now().toString(), 
+      id: firebaseUid, 
       matricula, 
       user, 
       nome, 
       email, 
-      pass: pass, // Guardar para fallback offline
+      pass: pass,
       dataCriacao: new Date().toISOString(),
       criadoPor: localStorage.getItem('usuarioEmail') || 'admin'
     };
     
-    // 3. Guardar no Firestore
-    if (window.firebaseReady && window.db) {
-      await window.db.collection('colaboradores').doc(novoColab.id).set(novoColab);
-      console.log('✅ Colaborador guardado no Firestore');
-    }
+    // 3. Guardar APENAS no Firestore
+    await window.db.collection('colaboradores').doc(firebaseUid).set(novoColab);
+    console.log('✅ Colaborador guardado no Firestore');
     
-    // 4. Atualizar array local
+    // 4. Atualizar array local (cache)
     colaboradores.push(novoColab);
-    localStorage.setItem('colaboradores', JSON.stringify(colaboradores));
     
     showToast('✅ Colaborador criado com sucesso!');
     
@@ -797,13 +795,16 @@ async function saveUser() {
     
   } catch (error) {
     console.error('Erro ao criar colaborador:', error);
-    showToast('❌ Erro: ' + (error.message || 'Tente novamente.'));
+    if (error.code === 'auth/email-already-in-use') {
+      showToast('⚠️ Email já registado no sistema.');
+    } else {
+      showToast('❌ Erro: ' + (error.message || 'Tente novamente.'));
+    }
   } finally {
     btn.disabled = false;
     btn.innerHTML = originalText;
   }
 }
-
 async function importColaboradores(files) {
   if (!files || !files[0]) return;
   
@@ -932,58 +933,97 @@ function atualizarSelectores() {
 function selecionarTodos() { document.querySelectorAll('#colab-selector-grid input:not(:disabled)').forEach(cb => cb.checked = true); }
 function deselecionarTodos() { document.querySelectorAll('#colab-selector-grid input').forEach(cb => cb.checked = false); }
 
-function gerarLinksMassa() {
+async function gerarLinksMassa() {
     const cursoId = document.getElementById('atribuir-curso')?.value;
     if (!cursoId) { showToast('❌ Selecione uma formação'); return; }
+    
     const selected = Array.from(document.querySelectorAll('#colab-selector-grid input:checked:not(:disabled)'));
     if (!selected.length) { showToast('❌ Selecione pelo menos um colaborador'); return; }
+    
+    if (!window.firebaseReady || !window.db) {
+        showToast('❌ Erro: Sem ligação à base de dados online.');
+        return;
+    }
+    
     const prazo = document.getElementById('atribuir-prazo')?.value || '31/12/2026';
     const cursoNome = document.getElementById('atribuir-curso')?.selectedOptions[0]?.text || 'Formação';
     const baseUrl = window.location.origin + window.location.pathname.replace('admin.html', '') + 'formacao.html';
+    
     linksGerados = [];
     let contadorSucesso = 0, contadorReutilizados = 0;
+    
+    showToast('⏳ A gerar links...');
+    
     for (const cb of selected) {
         const colaborador = colaboradores.find(c => c.id === cb.value);
         if (!colaborador) continue;
+        
         const user = colaborador.user || colaborador.email;
         const nome = colaborador.nome;
         const email = colaborador.email || '';
         const matricula = colaborador.matricula || '';
-        const atribuicaoExistente = atribuicoes.find(a => a.colaboradorUser === user && a.cursoId === cursoId && a.status !== 'concluido');
+        
+        // Verificar se já existe atribuição
+        const atribuicaoExistente = atribuicoes.find(a => 
+            a.colaboradorUser === user && a.cursoId === cursoId && a.status !== 'concluido'
+        );
+        
         if (atribuicaoExistente) {
-            linksGerados.push({ nome, email, matricula, link: atribuicaoExistente.link, prazo, cursoNome, status: 'reutilizado' });
+            linksGerados.push({ 
+                nome, email, matricula, 
+                link: atribuicaoExistente.link, 
+                prazo, cursoNome, 
+                status: 'reutilizado' 
+            });
             contadorReutilizados++;
             continue;
         }
         
-        const tokenId = Date.now().toString(36) + Math.random().toString(36).substr(2, 4) + '_' + contadorSucesso;
-        const tokenData = { user, nome, email, matricula, cursoId, cursoNome, prazo, timestamp: Date.now() };
-        localStorage.setItem(`token_${tokenId}`, JSON.stringify(tokenData));
-        if (window.firebaseReady && window.db) {
-            window.db.collection('tokens').doc(tokenId).set(tokenData);
+        try {
+            const tokenId = Date.now().toString(36) + Math.random().toString(36).substr(2, 4) + '_' + contadorSucesso;
+            const tokenData = { 
+                user, nome, email, matricula, 
+                cursoId, cursoNome, prazo, 
+                timestamp: Date.now(),
+                createdAt: new Date().toISOString()
+            };
+            
+            // 🔥 GUARDAR TOKEN NO FIRESTORE
+            await window.db.collection('tokens').doc(tokenId).set(tokenData);
+            console.log('☁️ Token guardado:', tokenId);
+            
+            const link = `${baseUrl}?t=${tokenId}`;
+            
+            const novaAtribuicao = { 
+                id: Date.now().toString() + '_' + user.replace(/[^a-z0-9]/gi, '_'), 
+                colaboradorId: colaborador.id, 
+                colaboradorUser: user, 
+                colaboradorNome: nome, 
+                colaboradorEmail: email, 
+                colaboradorMatricula: matricula, 
+                cursoId, cursoNome, prazo, 
+                status: 'pendente', 
+                dataCriacao: new Date().toISOString(), 
+                token: tokenId, 
+                link: link 
+            };
+            
+            // 🔥 GUARDAR ATRIBUIÇÃO NO FIRESTORE
+            await window.db.collection('atribuicoes').doc(novaAtribuicao.id).set(novaAtribuicao);
+            atribuicoes.push(novaAtribuicao);
+            
+            linksGerados.push({ nome, email, matricula, link, prazo, cursoNome, status: 'novo' });
+            contadorSucesso++;
+            
+        } catch (error) {
+            console.error('❌ Erro ao processar:', email, error);
         }
-        const link = `${baseUrl}?t=${tokenId}`;
-        
-        const novaAtribuicao = { 
-            id: Date.now().toString() + '_' + user.replace(/[^a-z0-9]/gi, '_'), 
-            colaboradorId: colaborador.id, 
-            colaboradorUser: user, 
-            colaboradorNome: nome, 
-            colaboradorEmail: email, 
-            colaboradorMatricula: matricula, 
-            cursoId, cursoNome, prazo, 
-            status: 'pendente', 
-            dataCriacao: new Date().toISOString(), 
-            token: tokenId, 
-            link: link 
-        };
-        atribuicoes.push(novaAtribuicao);
-        linksGerados.push({ nome, email, matricula, link, prazo, cursoNome, status: 'novo' });
-        contadorSucesso++;
     }
-    salvarAtribuicoes();
+    
+    // Atualizar UI
     const linksList = document.getElementById('links-list');
     const linksGeradosDiv = document.getElementById('links-gerados');
+    
     if (linksList && linksGerados.length > 0) {
         linksList.innerHTML = linksGerados.map(l => `
             <div class="item-card" style="flex-direction:column;margin-bottom:12px;">
@@ -998,8 +1038,14 @@ function gerarLinksMassa() {
                 <div style="margin-top:6px;font-size:10px;">📅 Prazo: ${l.prazo}</div>
             </div>
         `).join('');
-        document.querySelectorAll('.btn-copiar-link-individual').forEach(btn => btn.addEventListener('click', () => copiarLinkIndividual(btn.dataset.link)));
-        document.querySelectorAll('.btn-enviar-email-individual').forEach(btn => btn.addEventListener('click', () => enviarEmailIndividual(btn.dataset.email, btn.dataset.nome, btn.dataset.link, btn.dataset.prazo, btn.dataset.curso)));
+        
+        document.querySelectorAll('.btn-copiar-link-individual').forEach(btn => 
+            btn.addEventListener('click', () => copiarLinkIndividual(btn.dataset.link))
+        );
+        document.querySelectorAll('.btn-enviar-email-individual').forEach(btn => 
+            btn.addEventListener('click', () => enviarEmailIndividual(btn.dataset.email, btn.dataset.nome, btn.dataset.link, btn.dataset.prazo, btn.dataset.curso))
+        );
+        
         linksGeradosDiv.style.display = 'block';
         let msg = `✅ ${contadorSucesso} link(s) novo(s) gerado(s)!`;
         if (contadorReutilizados > 0) msg += ` ${contadorReutilizados} já existente(s).`;
@@ -1007,7 +1053,6 @@ function gerarLinksMassa() {
         renderAcompanhamento();
     }
 }
-
 function copiarLinkIndividual(link) {
   navigator.clipboard?.writeText(link).then(() => showToast('🔗 Link copiado!')).catch(() => {
     const textarea = document.createElement('textarea'); textarea.value = link;
