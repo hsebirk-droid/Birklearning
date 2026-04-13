@@ -14,37 +14,6 @@ function getSessionProgressKey() {
   return `progress_${sessionKey}`;
 }
 
-async function initDashboard() {
-  console.log('🚀 Iniciando dashboard...');
-
-  currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
-
-  if (!currentUser) {
-    window.location.href = 'login.html';
-    return;
-  }
-
-  if (currentUser.type === 'admin') {
-    window.location.href = 'admin.html';
-    return;
-  }
-
-  const welcomeMessage = document.getElementById('welcomeMessage');
-  const userAvatar = document.getElementById('userAvatar');
-
-  if (welcomeMessage) {
-    const firstName = String(currentUser.name || 'Utilizador').split(' ')[0];
-    welcomeMessage.innerHTML = `Bem-vindo de volta, ${firstName}! 👋`;
-  }
-
-  if (userAvatar) {
-    userAvatar.textContent = String(currentUser.name || 'U').charAt(0).toUpperCase();
-  }
-
-  await loadCourses();
-  setupEventListeners();
-}
-
 async function loadCourses() {
   const loadingDiv = document.getElementById('loading');
   const coursesGrid = document.getElementById('coursesGrid');
@@ -85,6 +54,34 @@ async function loadCourses() {
   coursesGrid.style.display = 'grid';
 }
 
+async function initDashboard() {
+  console.log('🚀 Iniciando dashboard...');
+  
+  // ✅ Verificar primeiro se tem token na URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const tokenId = urlParams.get('t') || urlParams.get('token');
+  
+  if (tokenId) {
+    // Se tem token, redireciona para a formação
+    console.log("🔑 Token encontrado, redirecionando para formação...");
+    window.location.href = 'formacao.html' + window.location.search;
+    return;
+  }
+
+  currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+
+  if (!currentUser) {
+    window.location.href = 'login.html';
+    return;
+  }
+
+  if (currentUser.type === 'admin') {
+    window.location.href = 'admin.html';
+    return;
+  }
+
+  // ... resto do código
+}
 async function filtrarApenasAtribuidas() {
   const userIdentifier = currentUser?.user || currentUser?.email || currentUser?.name || '';
   
