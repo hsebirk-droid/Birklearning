@@ -1,5 +1,5 @@
 /* ============================================
-   LOGIN - ESTILOS ESPECÍFICOS (SEM GOOGLE)
+   LOGIN - ESTILOS ESPECÍFICOS (SIMPLIFICADO)
    ============================================ */
 
 .login-wrap {
@@ -57,33 +57,9 @@
   letter-spacing: .08em;
 }
 
+/* Tabs escondidas */
 .login-tabs {
-  display: flex;
-  gap: 4px;
-  background: var(--bg);
-  border-radius: 8px;
-  padding: 4px;
-  margin-bottom: 24px;
-}
-
-.login-tab {
-  flex: 1;
-  padding: 8px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  background: transparent;
-  color: var(--birkenstock-gray);
-  transition: all .15s;
-  font-family: var(--font-body);
-}
-
-.login-tab.active {
-  background: var(--white);
-  color: var(--birkenstock-blue);
-  box-shadow: 0 1px 4px rgba(0,0,0,.1);
+  display: none;
 }
 
 .fg {
@@ -198,7 +174,9 @@
   text-decoration: underline;
 }
 
-#recovery-message {
+#recovery-message-1,
+#recovery-message-2,
+#recovery-message-3 {
   padding: 10px 14px;
   border-radius: 8px;
   font-size: 13px;
