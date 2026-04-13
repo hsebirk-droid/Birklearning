@@ -438,6 +438,11 @@ window.downloadCertificateFromHistory = function(historicoId) {
 function showCertificateInModal(cert) {
   currentCertificateData = cert;
   
+  // Buscar a formação para obter a duração
+  const formacoes = JSON.parse(localStorage.getItem('formacoes') || '[]');
+  const formacao = formacoes.find(f => f.id === cert.cursoId);
+  const duracaoFormacao = formacao?.duracao || '—';
+  
   const fundoImagem = 'assets/fundo_certificado.png';
   const certHtml = `
     <div id="certificado-visualizacao-pdf" style="background-image:url('${fundoImagem}');background-size:cover;background-position:center;width:100%;aspect-ratio:210/297;padding:40px;box-sizing:border-box;">
@@ -445,8 +450,9 @@ function showCertificateInModal(cert) {
         <div style="font-family:'Fraunces',serif;font-size:2rem;font-weight:900;color:#00338D;margin-bottom:10px;">${window.escapeHtml(cert.nomeDisplay || cert.nome)}</div>
         <div style="font-size:1.2rem;margin:20px 0;color:#616365;">concluiu com sucesso a formação</div>
         <div style="font-family:'Fraunces',serif;font-size:1.5rem;font-weight:700;color:#C5A059;margin-bottom:20px;">${window.escapeHtml(cert.curso)}</div>
-        <div style="margin-top:30px;display:flex;justify-content:center;gap:40px;">
+        <div style="margin-top:30px;display:flex;justify-content:center;gap:40px;flex-wrap:wrap;">
           <div><div style="font-size:0.7rem;">NOTA FINAL</div><div style="font-size:1.3rem;font-weight:700;">${cert.nota}</div></div>
+          <div><div style="font-size:0.7rem;">DURAÇÃO</div><div style="font-size:1rem;">${window.escapeHtml(duracaoFormacao)}</div></div>
           <div><div style="font-size:0.7rem;">DATA</div><div style="font-size:1rem;">${cert.data}</div></div>
           <div><div style="font-size:0.7rem;">CERTIFICADO ID</div><div style="font-family:monospace;font-size:0.9rem;">${cert.certificadoId || 'CERT-' + Date.now()}</div></div>
         </div>
