@@ -51,7 +51,10 @@ function gerarTokenSeguro(dados) {
 async function carregarDadosExemplo() {
   console.log('📦 A carregar dados...');
   
-  const isAuthenticated = window.auth?.currentUser || localStorage.getItem('usuarioAdmin');
+  // ✅ SEGURO: Verificar APENAS autenticação Firebase + email admin
+  const firebaseUser = window.auth?.currentUser;
+  const isAdminEmail = firebaseUser?.email && window.isAdminEmail ? window.isAdminEmail(firebaseUser.email) : false;
+  const isAuthenticated = firebaseUser && isAdminEmail;
   
   if (window.firebaseReady && window.db && isAuthenticated) {
     try {
@@ -1229,10 +1232,20 @@ function setupEventListeners() {
 }
 
 function initAdmin() {
-  if (!localStorage.getItem('usuarioAdmin')) { 
+  // ✅ Verificar autenticação real do Firebase
+  const firebaseUser = window.auth?.currentUser;
+  const isAdminEmail = firebaseUser?.email && window.isAdminEmail ? window.isAdminEmail(firebaseUser.email) : false;
+  
+  if (!firebaseUser || !isAdminEmail) { 
+    console.warn('🔒 Acesso negado - redirecionando para login');
     window.location.href = 'login.html'; 
     return; 
   }
+  
+  // Atualizar localStorage com dados do Firebase (apenas para UI, não para segurança)
+  localStorage.setItem('usuarioAdmin', 'admin');
+  localStorage.setItem('usuarioNome', firebaseUser.displayName || 'Administrador');
+  localStorage.setItem('usuarioEmail', firebaseUser.email || '');
   
   carregarDadosExemplo().then(() => {
     setupEventListeners();
