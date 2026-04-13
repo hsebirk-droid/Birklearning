@@ -23,32 +23,29 @@ async function loadCourses() {
   loadingDiv.style.display = 'block';
   coursesGrid.style.display = 'none';
 
-    // ✅ SEMPRE buscar do Firestore (sem fallback para localStorage)
-  if (!window.firebaseReady || !window.db) {
-    console.error('❌ Firestore indisponível');
-    loadingDiv.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔌</div><h4>Sem ligação</h4><p>Verifique a sua internet e tente novamente.</p><button class="btn-start" onclick="location.reload()">🔄 Tentar novamente</button></div>';
-    coursesGrid.style.display = 'block';
-    return;
-  }
-  
-  try {
-    const snapshot = await window.db.collection('formacoes').get();
-    allCourses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    console.log('✅ Formações carregadas do Firestore:', allCourses.length);
-    
-    // Guardar no localStorage APENAS para performance (cache), não como fallback
-    localStorage.setItem('formacoes', JSON.stringify(allCourses));
-  } catch (error) {
-    console.error('❌ Erro ao carregar do Firestore:', error);
-    loadingDiv.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❌</div><h4>Erro de ligação</h4><p>Não foi possível carregar as formações.</p><button class="btn-start" onclick="location.reload()">🔄 Tentar novamente</button></div>';
-    coursesGrid.style.display = 'block';
-    return;
+  // Tentar carregar do Firestore primeiro
+  if (window.firebaseReady && window.db) {
+    try {
+      const snapshot = await window.db.collection('formacoes').get();
+      allCourses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log('✅ Formações carregadas do Firestore:', allCourses.length);
+      localStorage.setItem('formacoes', JSON.stringify(allCourses));
+    } catch (error) {
+      console.error('❌ Erro ao carregar do Firestore:', error);
+      allCourses = JSON.parse(localStorage.getItem('formacoes') || '[]');
+    }
+  } else {
+    console.log('📦 Carregando formações do localStorage');
+    allCourses = JSON.parse(localStorage.getItem('formacoes') || '[]');
   }
 
-  console.log('📚 Formações carregadas:', allCourses.length);
+  if (allCourses.length === 0) {
+    loadingDiv.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><h4>Nenhuma formação disponível</h4><p>Não há formações atribuídas a si.</p></div>';
+    coursesGrid.style.display = 'block';
+    return;
+  }
 
   await filtrarApenasAtribuidas();
-  
   loadUserProgress();
   updateUserStats();
   renderCourses();
@@ -60,12 +57,10 @@ async function loadCourses() {
 async function initDashboard() {
   console.log('🚀 Iniciando dashboard...');
   
-  // ✅ Verificar primeiro se tem token na URL
   const urlParams = new URLSearchParams(window.location.search);
   const tokenId = urlParams.get('t') || urlParams.get('token');
   
   if (tokenId) {
-    // Se tem token, redireciona para a formação
     console.log("🔑 Token encontrado, redirecionando para formação...");
     window.location.href = 'formacao.html' + window.location.search;
     return;
@@ -83,24 +78,38 @@ async function initDashboard() {
     return;
   }
 
-  // ... resto do código
+  const welcomeMessage = document.getElementById('welcomeMessage');
+  if (welcomeMessage) {
+    welcomeMessage.textContent = `Bem-vindo, ${currentUser.name || 'Colaborador'}!`;
+  }
+
+  const userAvatar = document.getElementById('userAvatar');
+  if (userAvatar) {
+    userAvatar.textContent = String(currentUser.name || 'U').charAt(0).toUpperCase();
+  }
+
+  await loadCourses();
+  setupEventListeners();
 }
+
 async function filtrarApenasAtribuidas() {
   const userIdentifier = currentUser?.user || currentUser?.email || currentUser?.name || '';
-  
   console.log('🔍 Filtrando formações para:', userIdentifier);
   
-    // ✅ SEMPRE buscar do Firestore
-  if (!window.firebaseReady || !window.db) {
-    console.error('❌ Firestore indisponível para atribuições');
-    return;
+  let atribuicoesData = [];
+  
+  if (window.firebaseReady && window.db) {
+    try {
+      const snapshot = await window.db.collection('atribuicoes').get();
+      atribuicoesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      localStorage.setItem('atribuicoes', JSON.stringify(atribuicoesData));
+    } catch (error) {
+      console.error('Erro ao carregar atribuições:', error);
+      atribuicoesData = JSON.parse(localStorage.getItem('atribuicoes') || '[]');
+    }
+  } else {
+    atribuicoesData = JSON.parse(localStorage.getItem('atribuicoes') || '[]');
   }
-  
-  const snapshot = await window.db.collection('atribuicoes').get();
-  const atribuicoesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  
-  // Guardar cache para performance
-  localStorage.setItem('atribuicoes', JSON.stringify(atribuicoesData));
   
   console.log('📋 Total de atribuições:', atribuicoesData.length);
   
@@ -113,7 +122,6 @@ async function filtrarApenasAtribuidas() {
   
   console.log('📋 Minhas atribuições:', minhasAtribuicoes.length);
   
-  // Guardar prazos para uso nos cards
   window.minhasAtribuicoesMap = {};
   minhasAtribuicoes.forEach(a => {
     window.minhasAtribuicoesMap[a.cursoId] = a;
@@ -129,37 +137,31 @@ async function filtrarApenasAtribuidas() {
   console.log('🎯 IDs atribuídos:', cursosAtribuidosIds);
   
   allCourses = allCourses.filter(curso => cursosAtribuidosIds.includes(curso.id));
-  
   console.log('✅ Formações após filtro:', allCourses.length);
 }
 
 function loadUserProgress() {
   const saved = localStorage.getItem(getSessionProgressKey());
-
   if (!saved) {
     userProgress = {};
     return;
   }
-
   try {
     userProgress = JSON.parse(saved);
   } catch (e) {
-    console.error('Erro ao carregar progresso do utilizador:', e);
+    console.error('Erro ao carregar progresso:', e);
     userProgress = {};
   }
 }
 
 function calculateCourseProgress(curso) {
   if (!curso || !curso.id) return 0;
-
   const progress = userProgress[curso.id];
   if (progress?.completed) return 100;
-
   if (progress?.modulesCompleted) {
     const totalModules = curso.modulos?.length || 1;
     return Math.round((progress.modulesCompleted / totalModules) * 100);
   }
-
   return 0;
 }
 
@@ -226,11 +228,8 @@ function renderCourses() {
     const atribuicao = window.minhasAtribuicoesMap?.[curso.id];
     const prazo = atribuicao?.prazo || 'Não definido';
 
-    let cardContent = '';
-    
     if (completed) {
-      // Formação CONCLUÍDA - apenas título e botões de certificado
-      cardContent = `
+      return `
         <div class="course-card completed-course">
           <div class="course-cover" style="background: linear-gradient(135deg, var(--success), #059669);">
             <span>🎓</span>
@@ -253,32 +252,29 @@ function renderCourses() {
         </div>
       `;
     } else {
-      // Formação NÃO CONCLUÍDA - título, prazo, sem conteúdo programático
       const modulesCount = curso.modulos?.length || 0;
-      let btnText = progress > 0 ? '▶ Continuar' : '📖 Iniciar';
-      let btnClass = progress > 0 ? 'continue' : '';
-      
-      // ✅ Extrair primeiras palavras do conteúdo programático para preview
-const conteudoPreview = (curso.conteudoProgramatico || curso.descricao || '').substring(0, 80) + '...';
+      const btnText = progress > 0 ? '▶ Continuar' : '📖 Iniciar';
+      const btnClass = progress > 0 ? 'continue' : '';
+      const conteudoPreview = (curso.conteudoProgramatico || curso.descricao || '').substring(0, 80) + '...';
 
-cardContent = `
-  <div class="course-card">
-    <div class="course-cover" onclick="window.entrarFormacao('${curso.id}')">
-      <span>${curso.icone || '📖'}</span>
-      <span class="course-badge">${curso.duracao || '30 min'}</span>
-    </div>
-    <div class="course-body" onclick="window.entrarFormacao('${curso.id}')">
-      <div class="course-title">${window.escapeHtml(curso.nome)}</div>
-      <div class="course-desc" style="font-size: 12px; color: var(--birkenstock-gray); margin: 8px 0; line-height: 1.4;">
-        ${window.escapeHtml(conteudoPreview)}
-      </div>
-      <div class="course-prazo" style="font-size: 12px; color: var(--birkenstock-blue); margin: 8px 0;">
-        <i class="far fa-calendar-alt"></i> Prazo: ${window.escapeHtml(prazo)}
-      </div>
-      <div class="course-meta">
-        <span><i class="fas fa-layer-group"></i> ${modulesCount} módulos</span>
-        <span><i class="fas fa-question-circle"></i> ${curso.perguntas?.length || 0} questões</span>
-      </div>
+      return `
+        <div class="course-card">
+          <div class="course-cover" onclick="window.entrarFormacao('${curso.id}')">
+            <span>${curso.icone || '📖'}</span>
+            <span class="course-badge">${curso.duracao || '30 min'}</span>
+          </div>
+          <div class="course-body" onclick="window.entrarFormacao('${curso.id}')">
+            <div class="course-title">${window.escapeHtml(curso.nome)}</div>
+            <div class="course-desc" style="font-size: 12px; color: var(--birkenstock-gray); margin: 8px 0; line-height: 1.4;">
+              ${window.escapeHtml(conteudoPreview)}
+            </div>
+            <div class="course-prazo" style="font-size: 12px; color: var(--birkenstock-blue); margin: 8px 0;">
+              <i class="far fa-calendar-alt"></i> Prazo: ${window.escapeHtml(prazo)}
+            </div>
+            <div class="course-meta">
+              <span><i class="fas fa-layer-group"></i> ${modulesCount} módulos</span>
+              <span><i class="fas fa-question-circle"></i> ${curso.perguntas?.length || 0} questões</span>
+            </div>
             ${progress > 0 ? `
               <div class="course-progress">
                 <div class="progress-bar">
@@ -292,8 +288,6 @@ cardContent = `
         </div>
       `;
     }
-    
-    return cardContent;
   }).join('');
 }
 
@@ -352,7 +346,6 @@ function setupEventListeners() {
 }
 
 // ==================== CERTIFICADOS ====================
-
 window.openAllCertificatesModal = function() {
   const modal = document.getElementById('allCertificatesModal');
   const list = document.getElementById('allCertificatesList');
@@ -369,7 +362,7 @@ window.openAllCertificatesModal = function() {
   if (!meusCertificados.length) {
     list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--birkenstock-gray);">Nenhum certificado disponível.</div>';
   } else {
-    list.innerHTML = meusCertificados.map((cert, idx) => `
+    list.innerHTML = meusCertificados.map((cert) => `
       <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid var(--border);">
         <div>
           <strong>${window.escapeHtml(cert.curso)}</strong>
@@ -439,7 +432,6 @@ window.downloadCertificateFromHistory = function(historicoId) {
 function showCertificateInModal(cert) {
   currentCertificateData = cert;
   
-  // Buscar a formação para obter a duração
   const formacoes = JSON.parse(localStorage.getItem('formacoes') || '[]');
   const formacao = formacoes.find(f => f.id === cert.cursoId);
   const duracaoFormacao = formacao?.duracao || '—';
@@ -515,7 +507,6 @@ function downloadCertificatePDF() {
 }
 
 // ==================== PERFIL ====================
-
 window.openProfileModal = function() {
   const modal = document.getElementById('profileModal');
   if (!modal || !currentUser) return;
@@ -532,11 +523,16 @@ window.closeProfileModal = function() {
 };
 
 // ==================== ENTRAR FORMAÇÃO ====================
-
 window.entrarFormacao = function(cursoId) {
   localStorage.setItem('cursoAtualId', cursoId);
   window.location.href = 'formacao.html';
 };
 
-document.addEventListener('DOMContentLoaded', initDashboard);
+// Inicializar quando o DOM estiver pronto
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initDashboard);
+} else {
+  initDashboard();
+}
+
 console.log('✅ dashboard.js carregado - versão corrigida');
