@@ -1,5 +1,5 @@
 // ============================================
-// ADMIN - LÓGICA PRINCIPAL (VERSÃO COMPLETA COM DETEÇÃO DE PDF)
+// ADMIN - LÓGICA PRINCIPAL (VERSÃO CORRIGIDA)
 // ============================================
 
 let formacoes = [];
@@ -23,7 +23,7 @@ const defaultCert = {
 
 let certTemplate = JSON.parse(localStorage.getItem('cert_template') || JSON.stringify(defaultCert));
 
-// ==================== FUNÇÃO CORRIGIDA - TOKEN SEGURO (UTF-8 CORRETO) ====================
+// ==================== FUNÇÃO CORRIGIDA - TOKEN SEGURO ====================
 function gerarTokenSeguro(dados) {
     try {
         const jsonStr = JSON.stringify(dados);
@@ -51,7 +51,6 @@ function gerarTokenSeguro(dados) {
 async function carregarDadosExemplo() {
   console.log('📦 A carregar dados...');
   
-  // ✅ SEGURO: Verificar APENAS autenticação Firebase + email admin
   const firebaseUser = window.auth?.currentUser;
   const isAdminEmail = firebaseUser?.email && window.isAdminEmail ? window.isAdminEmail(firebaseUser.email) : false;
   const isAuthenticated = firebaseUser && isAdminEmail;
@@ -88,12 +87,11 @@ async function carregarDadosExemplo() {
       return;
     }
   } else {
-    console.error('❌ Firestore indisponível ou não autenticado');
-    const dashboardGrid = document.getElementById('dashboard-grid');
-    if (dashboardGrid) {
-      dashboardGrid.innerHTML = '<div class="empty"><p>❌ Sem ligação à base de dados.<br><button class="btn" onclick="location.reload()">Tentar novamente</button></p></div>';
-    }
-    return;
+    console.log('📦 A carregar do localStorage (modo offline)');
+    formacoes = JSON.parse(localStorage.getItem('formacoes') || '[]');
+    colaboradores = JSON.parse(localStorage.getItem('colaboradores') || '[]');
+    atribuicoes = JSON.parse(localStorage.getItem('atribuicoes') || '[]');
+    historicos = JSON.parse(localStorage.getItem('historicos') || '[]');
   }
   
   if (!formacoes || formacoes.length === 0) {
@@ -312,7 +310,6 @@ function gerarCodigoAtribuicao() {
     showToast("✅ Atribuição registada com sucesso!");
 }
 
-// ==================== ENVIO DE EMAIL ====================
 function EnvioEmail() {
     const colabId = document.getElementById('select-colaborador')?.value;
     if (!colabId) { showToast('❌ Selecione um colaborador primeiro'); return; }
@@ -382,6 +379,38 @@ function renderFormacoesLista() {
   `).join('');
   document.querySelectorAll('.btn-editar-formacao').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); editarFormacao(btn.dataset.id); }));
   document.querySelectorAll('.btn-apagar-formacao').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); apagarFormacao(btn.dataset.id); }));
+}
+
+function editarFormacao(id) {
+  const formacao = formacoes.find(f => f.id === id);
+  if (!formacao) return;
+  
+  document.getElementById('f-titulo').value = formacao.nome;
+  document.getElementById('f-duracao').value = formacao.duracao || '';
+  document.getElementById('f-descricao').value = formacao.conteudoProgramatico || formacao.descricao || '';
+  
+  modulos = formacao.modulos ? [...formacao.modulos] : [];
+  perguntas = formacao.perguntas ? [...formacao.perguntas] : [];
+  editandoFormacaoId = id;
+  
+  renderModulos(); 
+  renderPerguntas();
+  
+  document.getElementById('editando-id').innerHTML = `✏️ Editando: ${escapeHtml(formacao.nome)}`;
+  document.getElementById('btn-cancelar-edicao').style.display = 'inline-block';
+  
+  document.querySelector('.admin-tab[data-tab="formacoes"]')?.click();
+}
+
+function cancelarEdicao() {
+  editandoFormacaoId = null;
+  document.getElementById('f-titulo').value = '';
+  document.getElementById('f-duracao').value = '';
+  document.getElementById('f-descricao').value = '';
+  modulos = []; perguntas = [];
+  renderModulos(); renderPerguntas();
+  document.getElementById('editando-id').innerHTML = '';
+  document.getElementById('btn-cancelar-edicao').style.display = 'none';
 }
 
 function apagarFormacao(id) {
@@ -486,23 +515,17 @@ function renderModulos() {
 }
 
 // ==================== DETEÇÃO AUTOMÁTICA DE PÁGINAS DE PDF ====================
-
 function extrairFileIdGoogleDrive(url) {
   if (!url) return null;
-  
   const patterns = [
     /\/d\/([a-zA-Z0-9_-]+)/,
     /id=([a-zA-Z0-9_-]+)/,
     /\/file\/d\/([a-zA-Z0-9_-]+)/
   ];
-  
   for (const pattern of patterns) {
     const match = url.match(pattern);
-    if (match && match[1]) {
-      return match[1];
-    }
+    if (match && match[1]) return match[1];
   }
-  
   return null;
 }
 
@@ -514,15 +537,9 @@ function converterParaUrlDownload(fileId) {
 
 async function obterNumeroPaginasPDF(url) {
   const fileId = extrairFileIdGoogleDrive(url);
-  
-  if (!fileId) {
-    throw new Error('Não foi possível extrair o ID do ficheiro. Verifique o URL.');
-  }
-  
+  if (!fileId) throw new Error('Não foi possível extrair o ID do ficheiro. Verifique o URL.');
   console.log('📄 ID do ficheiro:', fileId);
-  
   const pdfUrl = converterParaUrlDownload(fileId);
-  
   try {
     const loadingTask = pdfjsLib.getDocument(pdfUrl);
     const pdf = await loadingTask.promise;
@@ -532,7 +549,6 @@ async function obterNumeroPaginasPDF(url) {
     console.error('❌ Erro:', error);
     const proxyAlternativo = 'https://api.allorigins.win/raw?url=';
     const pdfUrlAlt = proxyAlternativo + encodeURIComponent(`https://drive.google.com/uc?export=download&id=${fileId}`);
-    
     const loadingTask = pdfjsLib.getDocument(pdfUrlAlt);
     const pdf = await loadingTask.promise;
     return pdf.numPages;
@@ -547,32 +563,31 @@ function setupDetectarPaginas() {
   
   if (!btnDetectar) return;
   
-  // Remover listeners antigos
   const newBtn = btnDetectar.cloneNode(true);
   btnDetectar.parentNode.replaceChild(newBtn, btnDetectar);
   
   newBtn.addEventListener('click', async () => {
     const url = urlInput.value.trim();
-    
-    if (!url) {
-      showToast('❌ Primeiro insira o URL do Google Drive');
-      return;
-    }
-    
+    if (!url) { showToast('❌ Primeiro insira o URL do Google Drive'); return; }
     newBtn.disabled = true;
     newBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> A detetar...';
-    statusSpan.textContent = '⏳ A analisar o PDF...';
-    statusSpan.style.color = 'var(--warning)';
-    
+    if (statusSpan) {
+      statusSpan.textContent = '⏳ A analisar o PDF...';
+      statusSpan.style.color = 'var(--warning)';
+    }
     try {
       const numPages = await obterNumeroPaginasPDF(url);
       pagesInput.value = numPages;
-      statusSpan.textContent = `✅ Detetado! ${numPages} páginas.`;
-      statusSpan.style.color = 'var(--success)';
+      if (statusSpan) {
+        statusSpan.textContent = `✅ Detetado! ${numPages} páginas.`;
+        statusSpan.style.color = 'var(--success)';
+      }
       showToast(`✅ PDF analisado! ${numPages} páginas.`);
     } catch (error) {
-      statusSpan.textContent = '❌ ' + error.message;
-      statusSpan.style.color = 'var(--danger)';
+      if (statusSpan) {
+        statusSpan.textContent = '❌ ' + error.message;
+        statusSpan.style.color = 'var(--danger)';
+      }
       showToast('❌ ' + error.message);
     } finally {
       newBtn.disabled = false;
@@ -770,7 +785,6 @@ function atualizarSelectores() {
   
   if (colabGrid) {
     const cursoSelecionado = atribuirCurso?.value || '';
-    
     const colaboradoresOrdenados = [...colaboradores].sort((a, b) => {
       const matA = parseInt(a.matricula) || 999999;
       const matB = parseInt(b.matricula) || 999999;
@@ -986,15 +1000,8 @@ function publicarFormacao() {
   const duracao = document.getElementById('f-duracao')?.value.trim() || '30 min';
   const conteudoProgramatico = document.getElementById('f-descricao')?.value.trim() || '';
   
-  if (!titulo) { 
-    showToast('❌ Título obrigatório'); 
-    return; 
-  }
-  
-  if (!modulos.length) { 
-    showToast('❌ Adicione pelo menos um módulo'); 
-    return; 
-  }
+  if (!titulo) { showToast('❌ Título obrigatório'); return; }
+  if (!modulos.length) { showToast('❌ Adicione pelo menos um módulo'); return; }
   
   const novaFormacao = { 
     id: editandoFormacaoId || Date.now().toString(), 
@@ -1027,18 +1034,11 @@ function publicarFormacao() {
   }
   
   salvarFormacoes();
-  
   document.getElementById('f-titulo').value = '';
   document.getElementById('f-duracao').value = '';
   document.getElementById('f-descricao').value = '';
-  modulos = []; 
-  perguntas = [];
-  
-  renderModulos(); 
-  renderPerguntas(); 
-  renderFormacoesLista(); 
-  atualizarSelectores(); 
-  atualizarDashboard();
+  modulos = []; perguntas = [];
+  renderModulos(); renderPerguntas(); renderFormacoesLista(); atualizarSelectores(); atualizarDashboard();
 }
 
 // ==================== HISTÓRICO ====================
@@ -1164,41 +1164,7 @@ function alterarPasswordAdmin() {
   document.getElementById('admin-pass-confirm').value = '';
 }
 
-// ==================== EDIÇÃO DE FORMAÇÃO ====================
-function editarFormacao(id) {
-  const formacao = formacoes.find(f => f.id === id);
-  if (!formacao) return;
-  
-  document.getElementById('f-titulo').value = formacao.nome;
-  document.getElementById('f-duracao').value = formacao.duracao;
-  
-  document.getElementById('f-descricao').value = formacao.conteudoProgramatico || formacao.descricao || '';
-  
-  modulos = formacao.modulos ? [...formacao.modulos] : [];
-  perguntas = formacao.perguntas ? [...formacao.perguntas] : [];
-  editandoFormacaoId = id;
-  
-  renderModulos(); 
-  renderPerguntas();
-  
-  document.getElementById('editando-id').innerHTML = `✏️ Editando: ${escapeHtml(formacao.nome)}`;
-  document.getElementById('btn-cancelar-edicao').style.display = 'inline-block';
-  
-  document.querySelector('.admin-tab[data-tab="formacoes"]')?.click();
-}
-
-function cancelarEdicao() {
-  editandoFormacaoId = null;
-  document.getElementById('f-titulo').value = '';
-  document.getElementById('f-duracao').value = '';
-  document.getElementById('f-descricao').value = '';
-  modulos = []; perguntas = [];
-  renderModulos(); renderPerguntas();
-  document.getElementById('editando-id').innerHTML = '';
-  document.getElementById('btn-cancelar-edicao').style.display = 'none';
-}
-
-// ==================== UTILITÁRIOS ====================
+// ==================== SWITCH TAB ====================
 function switchTab(tabId) {
   document.querySelectorAll('.sec').forEach(s => s.classList.remove('active'));
   document.getElementById(`sec-${tabId}`)?.classList.add('active');
@@ -1207,7 +1173,7 @@ function switchTab(tabId) {
   if (tabId === 'colaboradores') renderColabs();
   if (tabId === 'historico') renderHistorico();
   if (tabId === 'atribuir') prepararAtribuicao();
-  if (tabId === 'atribuir-massa') { linksGerados = []; document.getElementById('links-gerados').style.display = 'none'; }
+  if (tabId === 'atribuir-massa') { linksGerados = []; document.getElementById('links-gerados').style.display = 'none'; atualizarSelectores(); }
   if (tabId === 'overview') atualizarDashboard();
   if (tabId === 'formacoes') renderFormacoesLista();
   if (tabId === 'certificado') carregarTemplateCertificado();
@@ -1232,24 +1198,20 @@ function setupEventListeners() {
 }
 
 function initAdmin() {
-  // ✅ Verificar autenticação: Firebase Auth OU localStorage
   const firebaseUser = window.auth?.currentUser;
   const isAdminEmail = firebaseUser?.email && window.isAdminEmail ? window.isAdminEmail(firebaseUser.email) : false;
   const isLocalAdmin = localStorage.getItem('usuarioAdmin') === 'admin';
   
-  // Permitir acesso se for Firebase Admin OU se tiver feito login local com password correta
   if (!firebaseUser && !isLocalAdmin) { 
     console.warn('🔒 Acesso negado - redirecionando para login');
     window.location.href = 'login.html'; 
     return; 
   }
   
-  // Se for admin local mas não tem Firebase, permitir acesso
   if (isLocalAdmin && !firebaseUser) {
     console.log('✅ Acesso local concedido ao Admin');
   }
   
-  // Atualizar localStorage com dados do Firebase (apenas para UI)
   if (firebaseUser) {
     localStorage.setItem('usuarioAdmin', 'admin');
     localStorage.setItem('usuarioNome', firebaseUser.displayName || 'Administrador');
@@ -1270,3 +1232,69 @@ function initAdmin() {
     setTimeout(() => atualizarSelectores(), 500);
   });
 }
+
+// ==================== EXPOR FUNÇÕES GLOBALMENTE ====================
+window.gerarTokenSeguro = gerarTokenSeguro;
+window.carregarDadosExemplo = carregarDadosExemplo;
+window.salvarFormacoes = salvarFormacoes;
+window.salvarColaboradores = salvarColaboradores;
+window.salvarAtribuicoes = salvarAtribuicoes;
+window.salvarHistoricos = salvarHistoricos;
+window.getColaboradoresList = getColaboradoresList;
+window.getFormacoesList = getFormacoesList;
+window.atualizarDashboard = atualizarDashboard;
+window.prepararAtribuicao = prepararAtribuicao;
+window.gerarCodigoAtribuicao = gerarCodigoAtribuicao;
+window.EnvioEmail = EnvioEmail;
+window.enviarEmailIndividual = enviarEmailIndividual;
+window.enviarEmailsMassa = enviarEmailsMassa;
+window.relembrarColaborador = relembrarColaborador;
+window.copiarLink = copiarLink;
+window.renderFormacoesLista = renderFormacoesLista;
+window.editarFormacao = editarFormacao;
+window.cancelarEdicao = cancelarEdicao;
+window.apagarFormacao = apagarFormacao;
+window.abrirModalModulo = abrirModalModulo;
+window.editarModulo = editarModulo;
+window.salvarModulo = salvarModulo;
+window.removerModulo = removerModulo;
+window.renderModulos = renderModulos;
+window.abrirModalPergunta = abrirModalPergunta;
+window.editarPergunta = editarPergunta;
+window.salvarPergunta = salvarPergunta;
+window.removerPergunta = removerPergunta;
+window.renderPerguntas = renderPerguntas;
+window.renderColabs = renderColabs;
+window.removerColab = removerColab;
+window.saveUser = saveUser;
+window.importColaboradores = importColaboradores;
+window.downloadModeloCSV = downloadModeloCSV;
+window.exportarColaboradoresExcel = exportarColaboradoresExcel;
+window.atualizarSelectores = atualizarSelectores;
+window.selecionarTodos = selecionarTodos;
+window.deselecionarTodos = deselecionarTodos;
+window.gerarLinksMassa = gerarLinksMassa;
+window.copiarLinkIndividual = copiarLinkIndividual;
+window.copiarTodosLinks = copiarTodosLinks;
+window.renderAcompanhamento = renderAcompanhamento;
+window.visualizarCertificadoAtribuicao = visualizarCertificadoAtribuicao;
+window.imprimirCertificadoModal = imprimirCertificadoModal;
+window.baixarPDFCertificadoModal = baixarPDFCertificadoModal;
+window.exportarAcompanhamentoExcel = exportarAcompanhamentoExcel;
+window.publicarFormacao = publicarFormacao;
+window.renderHistorico = renderHistorico;
+window.visualizarCertificadoHistorico = visualizarCertificadoHistorico;
+window.exportarHistoricoExcel = exportarHistoricoExcel;
+window.limparHistorico = limparHistorico;
+window.inserirPlaceholder = inserirPlaceholder;
+window.previewCertificado = previewCertificado;
+window.salvarTemplateCertificado = salvarTemplateCertificado;
+window.resetTemplateCertificado = resetTemplateCertificado;
+window.carregarTemplateCertificado = carregarTemplateCertificado;
+window.checkPasswordStrength = checkPasswordStrength;
+window.alterarPasswordAdmin = alterarPasswordAdmin;
+window.switchTab = switchTab;
+window.initAdmin = initAdmin;
+
+document.addEventListener('DOMContentLoaded', initAdmin);
+console.log('✅ admin.js carregado - versão corrigida com funções globais');
