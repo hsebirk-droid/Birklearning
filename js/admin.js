@@ -300,21 +300,50 @@ function apagarFormacao(id) {
 
 function publicarFormacao() {
   const titulo = document.getElementById('f-titulo')?.value.trim();
-  if (!titulo || !modulos.length) { showToast('❌ Título e pelo menos 1 módulo obrigatórios'); return; }
-  const nova = { id: editandoFormacaoId || Date.now().toString(), nome: titulo, duracao: document.getElementById('f-duracao')?.value.trim() || '30 min', descricao: document.getElementById('f-descricao')?.value.trim(), conteudoProgramatico: document.getElementById('f-descricao')?.value.trim(), icone: '📚', modulos: [...modulos], perguntas: perguntas.map(p => ({ id: p.id, texto: p.texto, opcoes: p.opcoes, correta: p.correta })) };
+  if (!titulo || !modulos.length) { 
+    showToast('❌ Título e pelo menos 1 módulo obrigatórios'); 
+    return; 
+  }
+  
+  const estavaEditando = !!editandoFormacaoId; // ✅ ADICIONAR ESTA LINHA
+  
+  const nova = { 
+    id: editandoFormacaoId || Date.now().toString(), 
+    nome: titulo, 
+    duracao: document.getElementById('f-duracao')?.value.trim() || '30 min', 
+    descricao: document.getElementById('f-descricao')?.value.trim(), 
+    conteudoProgramatico: document.getElementById('f-descricao')?.value.trim(), 
+    icone: '📚', 
+    modulos: [...modulos], 
+    perguntas: perguntas.map(p => ({ 
+      id: p.id, 
+      texto: p.texto, 
+      opcoes: p.opcoes, 
+      correta: p.correta 
+    })) 
+  };
+  
   if (editandoFormacaoId) {
     const idx = formacoes.findIndex(f => f.id === editandoFormacaoId);
     if (idx !== -1) formacoes[idx] = nova;
     editandoFormacaoId = null;
     document.getElementById('btn-cancelar-edicao').style.display = 'none';
-  } else { formacoes.push(nova); }
+  } else { 
+    formacoes.push(nova); 
+  }
+  
   salvarFormacoes();
   document.getElementById('f-titulo').value = document.getElementById('f-duracao').value = document.getElementById('f-descricao').value = '';
-  modulos = []; perguntas = [];
-  renderModulos(); renderPerguntas(); renderFormacoesLista(); atualizarSelectores(); atualizarDashboard();
-  showToast(`✅ ${editandoFormacaoId ? 'Atualizada' : 'Publicada'}!`);
+  modulos = []; 
+  perguntas = [];
+  renderModulos(); 
+  renderPerguntas(); 
+  renderFormacoesLista(); 
+  atualizarSelectores(); 
+  atualizarDashboard();
+  
+  showToast(`✅ ${estavaEditando ? 'Atualizada' : 'Publicada'}!`); // ✅ ALTERAR ESTA LINHA
 }
-
 // ==================== MÓDULOS ====================
 function abrirModalModulo(tipo) {
   moduloTipoAtual = tipo; editandoModuloId = null;
