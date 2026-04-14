@@ -463,8 +463,13 @@ function renderPerguntas() {
   perguntas.forEach((p, i) => {
     const opcoes = Array.isArray(p.opcoes) ? p.opcoes : ['', '', '', ''];
     
+    // Garantir que a pergunta tem um ID
+    if (!p.id) {
+      p.id = 'p_' + Date.now() + '_' + i;
+    }
+    
     html += `
-      <div class="pergunta-card" data-pergunta-index="${i}">
+      <div class="pergunta-card" data-pergunta-id="${p.id}">
         <div style="margin-bottom:8px;"><strong>${i+1}. ${escapeHtml(p.texto || 'Sem texto')}</strong></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:12px;">
           <div>A) ${escapeHtml(opcoes[0] || '')}</div>
@@ -474,8 +479,8 @@ function renderPerguntas() {
         </div>
         <div style="margin-top:8px;font-size:11px;color:var(--success);">✅ Correta: ${escapeHtml(p.correta || 'A')}</div>
         <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end;">
-          <button class="btn-editar-pergunta" data-id="${p.id}" style="background:var(--info);color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">✏️</button>
-          <button class="btn-remover-pergunta" data-id="${p.id}" style="background:var(--danger);color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">🗑️</button>
+          <button class="btn-editar-pergunta" data-id="${p.id}" data-index="${i}" style="background:var(--info);color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">✏️</button>
+          <button class="btn-remover-pergunta" data-id="${p.id}" data-index="${i}" style="background:var(--danger);color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">🗑️</button>
         </div>
       </div>
     `;
@@ -483,29 +488,49 @@ function renderPerguntas() {
   
   c.innerHTML = html;
   
-  // 🔥 Usar método tradicional para garantir que o ID é capturado
+  // Usar índices para identificar as perguntas
   const botoesEditar = c.querySelectorAll('.btn-editar-pergunta');
   const botoesRemover = c.querySelectorAll('.btn-remover-pergunta');
   
-  botoesEditar.forEach((btn, index) => {
+  botoesEditar.forEach((btn) => {
     btn.onclick = function() {
       const id = this.getAttribute('data-id');
-      console.log('🔍 ID da pergunta:', id);
-      if (id && id !== 'undefined') {
+      const index = this.getAttribute('data-index');
+      
+      console.log('🔍 ID:', id, 'Index:', index);
+      
+      if (id && id !== 'undefined' && id !== 'null') {
         editarPergunta(id);
+      } else if (index !== null) {
+        // Fallback: usar o índice
+        const pergunta = perguntas[index];
+        if (pergunta && pergunta.id) {
+          editarPergunta(pergunta.id);
+        } else {
+          showToast('❌ Erro: Pergunta não encontrada');
+        }
       } else {
-        console.error('❌ ID inválido:', id);
         showToast('❌ Erro: ID da pergunta inválido');
       }
     };
   });
   
-  botoesRemover.forEach((btn, index) => {
+  botoesRemover.forEach((btn) => {
     btn.onclick = function() {
       const id = this.getAttribute('data-id');
-      console.log('🗑️ ID para remover:', id);
-      if (id && id !== 'undefined') {
+      const index = this.getAttribute('data-index');
+      
+      console.log('🗑️ ID:', id, 'Index:', index);
+      
+      if (id && id !== 'undefined' && id !== 'null') {
         removerPergunta(id);
+      } else if (index !== null) {
+        const pergunta = perguntas[index];
+        if (pergunta && pergunta.id) {
+          removerPergunta(pergunta.id);
+        } else {
+          showToast('❌ Erro: Pergunta não encontrada');
+        }
       } else {
         showToast('❌ Erro: ID da pergunta inválido');
       }
