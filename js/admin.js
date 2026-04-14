@@ -377,16 +377,42 @@ function abrirModalPergunta() {
 }
 
 function editarPergunta(id) {
-  const p = perguntas.find(x => x.id === id); if (!p) return;
+  console.log('🔍 Editando pergunta ID:', id);
+  console.log('📋 Perguntas disponíveis:', perguntas);
+  
+  const p = perguntas.find(x => x.id === id);
+  if (!p) {
+    console.error('❌ Pergunta não encontrada!');
+    showToast('❌ Pergunta não encontrada');
+    return;
+  }
+  
+  console.log('✅ Pergunta encontrada:', p);
+  
   editandoPerguntaId = id;
+  
+  // Preencher texto
   document.getElementById('pergunta-texto').value = p.texto || '';
-  const opcoes = Array.isArray(p.opcoes) ? p.opcoes : ['', '', '', ''];
+  
+  // Preencher opções (garantir que é array)
+  let opcoes = p.opcoes;
+  if (!Array.isArray(opcoes)) {
+    console.warn('⚠️ opcoes não é array, a converter...');
+    opcoes = ['', '', '', ''];
+  }
+  
   document.getElementById('pergunta-opcao-a').value = opcoes[0] || '';
   document.getElementById('pergunta-opcao-b').value = opcoes[1] || '';
   document.getElementById('pergunta-opcao-c').value = opcoes[2] || '';
   document.getElementById('pergunta-opcao-d').value = opcoes[3] || '';
+  
+  // Preencher resposta correta
   document.getElementById('pergunta-correta').value = p.correta || 'A';
+  
+  // Mostrar modal
   document.getElementById('modal-pergunta').style.display = 'flex';
+  
+  console.log('✅ Modal aberto com sucesso!');
 }
 
 function salvarPergunta() {
