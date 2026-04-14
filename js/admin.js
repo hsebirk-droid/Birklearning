@@ -260,14 +260,7 @@ function copiarLink() {
   if (link) navigator.clipboard?.writeText(link).then(() => showToast('✅ Copiado!'));
 }
 
-// ==================== FORMAÇÕES ====================
-function renderFormacoesLista() {
-  const c = document.getElementById('formacoes-list'); if (!c) return;
-  c.innerHTML = formacoes.map(f => `<div class="item-card"><div class="item-card-info"><div class="item-card-title">📘 ${escapeHtml(f.nome)}</div><div class="item-card-meta">${f.modulos?.length||0} módulos · ${f.perguntas?.length||0} perguntas</div></div><div class="item-card-actions"><button class="btn-editar-formacao" data-id="${f.id}" style="color:var(--info)">✏️</button><button class="btn-apagar-formacao" data-id="${f.id}" style="color:var(--danger)">🗑️</button></div></div>`).join('');
-  document.querySelectorAll('.btn-editar-formacao').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); editarFormacao(b.dataset.id); }));
-  document.querySelectorAll('.btn-apagar-formacao').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); apagarFormacao(b.dataset.id); }));
-}
-
+// ==================== FORMAÇÕES (CORRIGIDO) ====================
 function editarFormacao(id) {
   const f = formacoes.find(x => x.id === id); if (!f) return;
   document.getElementById('f-titulo').value = f.nome || '';
@@ -279,6 +272,7 @@ function editarFormacao(id) {
   renderModulos(); renderPerguntas();
   document.getElementById('editando-id').innerHTML = `✏️ Editando: ${escapeHtml(f.nome)}`;
   document.getElementById('btn-cancelar-edicao').style.display = 'inline-block';
+  document.getElementById('btn-publicar').innerHTML = '✏️ Atualizar Formação'; // ✅ NOVO
   document.querySelector('.admin-tab[data-tab="formacoes"]')?.click();
 }
 
@@ -289,196 +283,43 @@ function cancelarEdicao() {
   renderModulos(); renderPerguntas();
   document.getElementById('editando-id').innerHTML = '';
   document.getElementById('btn-cancelar-edicao').style.display = 'none';
+  document.getElementById('btn-publicar').innerHTML = '📌 Publicar Formação'; // ✅ NOVO
 }
 
-function apagarFormacao(id) {
-  if (!confirm('Apagar?')) return;
+async function apagarFormacao(id) {
+  if (!confirm('Apagar esta formação? Esta ação não pode ser desfeita.')) return;
+  
+  // ✅ Remover atribuições associadas
+  atribuicoes = atribuicoes.filter(a => a.cursoId !== id);
+  await salvarAtribuicoes();
+  
+  // Remover formação
   formacoes = formacoes.filter(f => f.id !== id);
-  salvarFormacoes(); renderFormacoesLista(); atualizarDashboard(); atualizarSelectores(); renderAcompanhamento();
-  showToast('✅ Apagada!');
-}
-
-function publicarFormacao() {
-  const titulo = document.getElementById('f-titulo')?.value.trim();
-  if (!titulo || !modulos.length) { 
-    showToast('❌ Título e pelo menos 1 módulo obrigatórios'); 
-    return; 
+  await salvarFormacoes();
+  
+  // Remover do Firestore
+  if (window.firebaseReady && window.db) {
+    try {
+      await window.db.collection('formacoes').doc(id).delete();
+      const snapshot = await window.db.collection('atribuicoes').where('cursoId', '==', id).get();
+      const batch = window.db.batch();
+      snapshot.docs.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+    } catch(e) {
+      console.error('Erro ao remover do Firestore:', e);
+    }
   }
   
-  const estavaEditando = !!editandoFormacaoId; // ✅ ADICIONAR ESTA LINHA
-  
-  const nova = { 
-    id: editandoFormacaoId || Date.now().toString(), 
-    nome: titulo, 
-    duracao: document.getElementById('f-duracao')?.value.trim() || '30 min', 
-    descricao: document.getElementById('f-descricao')?.value.trim(), 
-    conteudoProgramatico: document.getElementById('f-descricao')?.value.trim(), 
-    icone: '📚', 
-    modulos: [...modulos], 
-    perguntas: perguntas.map(p => ({ 
-      id: p.id, 
-      texto: p.texto, 
-      opcoes: p.opcoes, 
-      correta: p.correta 
-    })) 
-  };
-  
-  if (editandoFormacaoId) {
-    const idx = formacoes.findIndex(f => f.id === editandoFormacaoId);
-    if (idx !== -1) formacoes[idx] = nova;
-    editandoFormacaoId = null;
-    document.getElementById('btn-cancelar-edicao').style.display = 'none';
-  } else { 
-    formacoes.push(nova); 
-  }
-  
-  salvarFormacoes();
-  document.getElementById('f-titulo').value = document.getElementById('f-duracao').value = document.getElementById('f-descricao').value = '';
-  modulos = []; 
-  perguntas = [];
-  renderModulos(); 
-  renderPerguntas(); 
   renderFormacoesLista(); 
+  atualizarDashboard(); 
   atualizarSelectores(); 
-  atualizarDashboard();
+  renderAcompanhamento();
+  renderHistorico();
   
-  showToast(`✅ ${estavaEditando ? 'Atualizada' : 'Publicada'}!`); // ✅ ALTERAR ESTA LINHA
-}
-// ==================== MÓDULOS ====================
-function abrirModalModulo(tipo) {
-  moduloTipoAtual = tipo; editandoModuloId = null;
-  document.getElementById('modulo-titulo').value = document.getElementById('modulo-duracao').value = document.getElementById('modulo-video-url').value = document.getElementById('modulo-texto-conteudo').value = document.getElementById('modulo-link-url').value = '';
-  document.getElementById('modulo-conteudo-video').style.display = tipo==='video'?'block':'none';
-  document.getElementById('modulo-conteudo-texto').style.display = tipo==='texto'?'block':'none';
-  document.getElementById('modulo-conteudo-link').style.display = tipo==='link'?'block':'none';
-  document.getElementById('modal-modulo-titulo').textContent = {video:'🎬 Vídeo',texto:'📄 Texto',link:'🔗 Link'}[tipo]||'Módulo';
-  document.getElementById('modal-modulo').style.display = 'flex';
-}
-
-function editarModulo(id) {
-  const m = modulos.find(x => x.id === id); if (!m) return;
-  editandoModuloId = id; moduloTipoAtual = m.tipo;
-  document.getElementById('modulo-titulo').value = m.titulo || '';
-  document.getElementById('modulo-duracao').value = m.duracao || '';
-  document.getElementById('modulo-conteudo-video').style.display = m.tipo==='video'?'block':'none';
-  document.getElementById('modulo-conteudo-texto').style.display = m.tipo==='texto'?'block':'none';
-  document.getElementById('modulo-conteudo-link').style.display = m.tipo==='link'?'block':'none';
-  if (m.tipo==='video') document.getElementById('modulo-video-url').value = m.conteudo?.url || '';
-  if (m.tipo==='texto') document.getElementById('modulo-texto-conteudo').value = m.conteudo?.texto || '';
-  if (m.tipo==='link') document.getElementById('modulo-link-url').value = m.conteudo?.url || '';
-  document.getElementById('modal-modulo').style.display = 'flex';
-}
-
-function salvarModulo() {
-  const titulo = document.getElementById('modulo-titulo').value.trim();
-  if (!titulo) { showToast('❌ Título obrigatório'); return; }
-  let conteudo = {};
-  if (moduloTipoAtual === 'video') {
-    const url = document.getElementById('modulo-video-url').value.trim();
-    if (!url) { showToast('❌ URL obrigatória'); return; }
-    conteudo = { url };
-  } else if (moduloTipoAtual === 'texto') {
-    const texto = document.getElementById('modulo-texto-conteudo').value.trim();
-    if (!texto) { showToast('❌ Conteúdo obrigatório'); return; }
-    conteudo = { texto };
-  } else if (moduloTipoAtual === 'link') {
-    const url = document.getElementById('modulo-link-url').value.trim();
-    if (!url) { showToast('❌ URL obrigatória'); return; }
-    conteudo = { url };
-  }
-  const duracao = document.getElementById('modulo-duracao').value.trim() || '15 min';
-  const novo = { id: editandoModuloId || Date.now().toString(), titulo, tipo: moduloTipoAtual, conteudo, duracao };
-  if (editandoModuloId) {
-    const idx = modulos.findIndex(m => m.id === editandoModuloId);
-    if (idx !== -1) modulos[idx] = novo;
-    editandoModuloId = null;
-  } else { modulos.push(novo); }
-  renderModulos();
-  document.getElementById('modal-modulo').style.display = 'none';
-  showToast(`✅ Módulo salvo!`);
-}
-
-function removerModulo(id) { if (confirm('Remover?')) { modulos = modulos.filter(m => m.id !== id); renderModulos(); } }
-
-function renderModulos() {
-  const c = document.getElementById('modulos-container'); if (!c) return;
-  c.innerHTML = modulos.length ? modulos.map((m,i) => `<div class="modulo-card"><div style="flex:1"><div style="font-weight:700;">${i+1}. ${escapeHtml(m.titulo)}</div><div style="font-size:11px;">${m.tipo==='video'?'🎬':m.tipo==='texto'?'📄':'🔗'} ${m.duracao}</div></div><div style="display:flex;gap:8px;"><button class="btn-editar-modulo" data-id="${m.id}" style="background:var(--info);color:white;border:none;padding:4px 10px;border-radius:4px;">✏️</button><button class="btn-remover-modulo" data-id="${m.id}" style="background:var(--danger);color:white;border:none;padding:4px 10px;border-radius:4px;">🗑️</button></div></div>`).join('') : '<div class="alert alert-info">Nenhum módulo.</div>';
-  document.querySelectorAll('.btn-editar-modulo').forEach(b => b.addEventListener('click', () => editarModulo(b.dataset.id)));
-  document.querySelectorAll('.btn-remover-modulo').forEach(b => b.addEventListener('click', () => removerModulo(b.dataset.id)));
+  showToast('✅ Formação e atribuições associadas eliminadas!');
 }
 
 // ==================== PERGUNTAS (CORRIGIDO) ====================
-function abrirModalPergunta() {
-  editandoPerguntaId = null;
-  document.getElementById('pergunta-texto').value = '';
-  document.getElementById('pergunta-opcao-a').value = '';
-  document.getElementById('pergunta-opcao-b').value = '';
-  document.getElementById('pergunta-opcao-c').value = '';
-  document.getElementById('pergunta-opcao-d').value = '';
-  document.getElementById('pergunta-correta').value = 'A';
-  document.getElementById('modal-pergunta').style.display = 'flex';
-}
-
-function editarPergunta(id) {
-  console.log('🔍 Editando pergunta ID:', id);
-  console.log('📋 Perguntas disponíveis:', perguntas);
-  
-  const p = perguntas.find(x => x.id === id);
-  if (!p) {
-    console.error('❌ Pergunta não encontrada!');
-    showToast('❌ Pergunta não encontrada');
-    return;
-  }
-  
-  console.log('✅ Pergunta encontrada:', p);
-  
-  editandoPerguntaId = id;
-  
-  // Preencher texto
-  document.getElementById('pergunta-texto').value = p.texto || '';
-  
-  // Preencher opções (garantir que é array)
-  let opcoes = p.opcoes;
-  if (!Array.isArray(opcoes)) {
-    console.warn('⚠️ opcoes não é array, a converter...');
-    opcoes = ['', '', '', ''];
-  }
-  
-  document.getElementById('pergunta-opcao-a').value = opcoes[0] || '';
-  document.getElementById('pergunta-opcao-b').value = opcoes[1] || '';
-  document.getElementById('pergunta-opcao-c').value = opcoes[2] || '';
-  document.getElementById('pergunta-opcao-d').value = opcoes[3] || '';
-  
-  // Preencher resposta correta
-  document.getElementById('pergunta-correta').value = p.correta || 'A';
-  
-  // Mostrar modal
-  document.getElementById('modal-pergunta').style.display = 'flex';
-  
-  console.log('✅ Modal aberto com sucesso!');
-}
-
-function salvarPergunta() {
-  const texto = document.getElementById('pergunta-texto').value.trim();
-  if (!texto) { showToast('❌ Texto obrigatório'); return; }
-  const opcoes = ['a','b','c','d'].map(l => document.getElementById(`pergunta-opcao-${l}`).value.trim());
-  if (opcoes.some(o => !o)) { showToast('❌ Todas as opções obrigatórias'); return; }
-  const correta = document.getElementById('pergunta-correta').value;
-  
-  if (editandoPerguntaId) {
-    const idx = perguntas.findIndex(p => p.id === editandoPerguntaId);
-    if (idx !== -1) perguntas[idx] = { ...perguntas[idx], texto, opcoes, correta };
-    editandoPerguntaId = null;
-  } else {
-    perguntas.push({ id: Date.now().toString(), texto, opcoes, correta });
-  }
-  renderPerguntas();
-  document.getElementById('modal-pergunta').style.display = 'none';
-  showToast('✅ Pergunta salva!');
-}
-
-function removerPergunta(id) { if (confirm('Remover?')) { perguntas = perguntas.filter(p => p.id !== id); renderPerguntas(); } }
-
 function renderPerguntas() {
   const c = document.getElementById('perguntas-container'); 
   if (!c) return;
@@ -492,9 +333,9 @@ function renderPerguntas() {
   perguntas.forEach((p, i) => {
     const opcoes = Array.isArray(p.opcoes) ? p.opcoes : ['', '', '', ''];
     
-    // Garantir que a pergunta tem um ID
+    // ✅ Garantir ID estável
     if (!p.id) {
-      p.id = 'p_' + Date.now() + '_' + i;
+      p.id = 'p_' + i + '_' + Math.random().toString(36).substr(2, 6);
     }
     
     html += `
@@ -517,7 +358,6 @@ function renderPerguntas() {
   
   c.innerHTML = html;
   
-  // Usar índices para identificar as perguntas
   const botoesEditar = c.querySelectorAll('.btn-editar-pergunta');
   const botoesRemover = c.querySelectorAll('.btn-remover-pergunta');
   
@@ -526,12 +366,9 @@ function renderPerguntas() {
       const id = this.getAttribute('data-id');
       const index = this.getAttribute('data-index');
       
-      console.log('🔍 ID:', id, 'Index:', index);
-      
       if (id && id !== 'undefined' && id !== 'null') {
         editarPergunta(id);
       } else if (index !== null) {
-        // Fallback: usar o índice
         const pergunta = perguntas[index];
         if (pergunta && pergunta.id) {
           editarPergunta(pergunta.id);
@@ -549,8 +386,6 @@ function renderPerguntas() {
       const id = this.getAttribute('data-id');
       const index = this.getAttribute('data-index');
       
-      console.log('🗑️ ID:', id, 'Index:', index);
-      
       if (id && id !== 'undefined' && id !== 'null') {
         removerPergunta(id);
       } else if (index !== null) {
@@ -566,7 +401,6 @@ function renderPerguntas() {
     };
   });
 }
-
 // ==================== COLABORADORES ====================
 function renderColabs() {
   const t = document.getElementById('colab-list-table'); if (!t) return;
