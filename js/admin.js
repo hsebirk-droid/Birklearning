@@ -29,7 +29,21 @@ function escapeHtml(text) {
   return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
-function showToast(msg) { window.showToast(msg); }
+function showToast(msg) { 
+  // Usar a função global do utils.js sem recursão
+  if (typeof window.showToast === 'function' && window.showToast !== showToast) {
+    window.showToast(msg);
+  } else {
+    // Fallback caso não exista
+    console.log('🔔 Toast:', msg);
+    const toast = document.getElementById('toast');
+    if (toast) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+  }
+}
 
 function formatDate(date) { return window.formatDate(date); }
 
