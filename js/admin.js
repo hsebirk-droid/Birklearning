@@ -208,7 +208,7 @@ async function gerarCodigoAtribuicao() {
   try {
     await window.db.collection('tokens').doc(tokenId).set(tokenData);
     
-    // ✅ CORREÇÃO: Construir URL completo corretamente
+    // Construir URL completo corretamente
     const baseUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
     const link = `${baseUrl}formacao.html?t=${tokenId}`;
     
@@ -225,7 +225,7 @@ async function gerarCodigoAtribuicao() {
       status: 'pendente', 
       dataAtribuicao: new Date().toISOString(), 
       token: tokenId, 
-      link: link  // ✅ Guardar URL completo
+      link: link
     };
     
     await window.db.collection('atribuicoes').doc(nova.id).set(nova);
@@ -255,10 +255,7 @@ function EnvioEmail() {
     return;
   }
   
-  // ✅ CORREÇÃO: Usar mailto simples sem encodeURIComponent excessivo
   const assunto = `Birkenstock - Nova Formacao: ${formacaoNome}`;
-  
-  // Corpo do email com quebras de linha simples
   const corpo = `Ola ${colab.nome},
 
 Foi-lhe atribuida uma nova formacao na plataforma Birkenstock S&CC Portugal.
@@ -272,19 +269,25 @@ ${link}
 Atenciosamente,
 Equipa de Formacao Birkenstock`;
   
-  // Criar mailto URL
   const mailtoUrl = `mailto:${colab.email}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
-  
-  // Abrir email
   window.location.href = mailtoUrl;
   showToast(`📧 A abrir email para ${colab.nome}`);
+}
+
+function enviarEmailIndividual(email, nome, link, prazo, cursoNome) {
+  if (!email) return;
+  
+  const cursoNomeSemAcento = cursoNome.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const assunto = `Birkenstock - Formacao: ${cursoNomeSemAcento}`;
+  const corpo = `Ola ${nome},%0D%0A%0D%0AFoi-lhe atribuida a formacao "${cursoNomeSemAcento}".%0D%0A%0D%0APrazo: ${prazo}%0D%0A%0D%0AAceda atraves do link:%0D%0A${link}%0D%0A%0D%0AAtenciosamente,%0D%0AEquipa de Formacao Birkenstock`;
+  
+  window.location.href = `mailto:${email}?subject=${encodeURIComponent(assunto)}&body=${corpo}`;
 }
 
 function enviarEmailsMassa() {
   if (!linksGerados.length) return;
   
   linksGerados.filter(l => l.email).forEach(l => {
-    // ✅ CORREÇÃO: Remover acentos e usar %0D%0A
     const cursoNomeSemAcento = l.cursoNome.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const assunto = `Birkenstock - Formacao: ${cursoNomeSemAcento}`;
     const corpo = `Olá ${l.nome},%0D%0A%0D%0AFoi-lhe atribuida a formacao "${cursoNomeSemAcento}".%0D%0A%0D%0APrazo: ${l.prazo}%0D%0A%0D%0AAceda atraves do link:%0D%0A${l.link}%0D%0A%0D%0AAtenciosamente,%0D%0AEquipa de Formacao Birkenstock`;
@@ -298,7 +301,6 @@ function enviarEmailsMassa() {
 function relembrarColaborador(id) {
   const a = atribuicoes.find(x => x.id === id); if (!a) return;
   
-  // ✅ CORREÇÃO: Remover acentos e usar %0D%0A
   const cursoNomeSemAcento = a.cursoNome.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const assunto = `Birkenstock - Lembrete: ${cursoNomeSemAcento}`;
   const corpo = `Olá ${a.colaboradorNome},%0D%0A%0D%0ARecordamos que ainda tem pendente a formacao "${cursoNomeSemAcento}".%0D%0A%0D%0APrazo: ${a.prazo || '---'}%0D%0A%0D%0AAceda atraves do link:%0D%0A${a.link}%0D%0A%0D%0AAtenciosamente,%0D%0AEquipa de Formacao Birkenstock`;
@@ -739,36 +741,109 @@ async function gerarLinksMassa() {
   const selected = Array.from(document.querySelectorAll('#colab-selector-grid input:checked:not(:disabled)'));
   if (!selected.length) { showToast('❌ Selecione colaboradores'); return; }
   if (!window.firebaseReady) { showToast('❌ Sem ligação'); return; }
+  
   const prazo = document.getElementById('atribuir-prazo')?.value || '31/12/2026';
   const cursoNome = document.getElementById('atribuir-curso')?.selectedOptions[0]?.text || 'Formação';
-  const baseUrl = window.location.origin + '/formacao.html';
-  linksGerados = []; let sucesso = 0, reutilizados = 0;
+  
+  // Usar o mesmo método de URL da atribuição individual
+  const baseUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
+  
+  linksGerados = []; 
+  let sucesso = 0, reutilizados = 0;
   showToast('⏳ A gerar...');
   
   for (const cb of selected) {
-    const c = colaboradores.find(x => x.id === cb.value); if (!c) continue;
+    const c = colaboradores.find(x => x.id === cb.value); 
+    if (!c) continue;
+    
     const user = c.user || c.email;
     const existente = atribuicoes.find(a => a.colaboradorUser === user && a.cursoId === cursoId && !['concluido','concluída','Concluido','Concluído'].includes(a.status));
-    if (existente) { linksGerados.push({ nome: c.nome, email: c.email, link: existente.link, prazo, cursoNome, status: 'reutilizado' }); reutilizados++; continue; }
+    
+    if (existente) { 
+      linksGerados.push({ 
+        nome: c.nome, 
+        email: c.email, 
+        link: existente.link, 
+        prazo, 
+        cursoNome, 
+        status: 'reutilizado' 
+      }); 
+      reutilizados++; 
+      continue; 
+    }
+    
     try {
       const tokenId = Date.now().toString(36) + Math.random().toString(36).substr(2,4) + '_' + sucesso;
-      await window.db.collection('tokens').doc(tokenId).set({ user, nome: c.nome, email: c.email||'', matricula: c.matricula||'', cursoId, cursoNome, prazo, createdAt: new Date().toISOString() });
-      const link = `${baseUrl}?t=${tokenId}`;
-      const nova = { id: Date.now().toString()+'_'+user.replace(/[^a-z0-9]/gi,'_'), colaboradorId: c.id, colaboradorUser: user, colaboradorNome: c.nome, colaboradorEmail: c.email||'', colaboradorMatricula: c.matricula||'', cursoId, cursoNome, prazo, status: 'pendente', dataCriacao: new Date().toISOString(), token: tokenId, link };
+      await window.db.collection('tokens').doc(tokenId).set({ 
+        user, 
+        nome: c.nome, 
+        email: c.email||'', 
+        matricula: c.matricula||'', 
+        cursoId, 
+        cursoNome, 
+        prazo, 
+        createdAt: new Date().toISOString() 
+      });
+      
+      // URL consistente com a atribuição individual
+      const link = `${baseUrl}formacao.html?t=${tokenId}`;
+      
+      const nova = { 
+        id: Date.now().toString()+'_'+user.replace(/[^a-z0-9]/gi,'_'), 
+        colaboradorId: c.id, 
+        colaboradorUser: user, 
+        colaboradorNome: c.nome, 
+        colaboradorEmail: c.email||'', 
+        colaboradorMatricula: c.matricula||'', 
+        cursoId, 
+        cursoNome, 
+        prazo, 
+        status: 'pendente', 
+        dataCriacao: new Date().toISOString(), 
+        token: tokenId, 
+        link: link 
+      };
+      
       await window.db.collection('atribuicoes').doc(nova.id).set(nova);
       atribuicoes.push(nova);
-      linksGerados.push({ nome: c.nome, email: c.email, link, prazo, cursoNome, status: 'novo' });
+      linksGerados.push({ 
+        nome: c.nome, 
+        email: c.email, 
+        link: link, 
+        prazo, 
+        cursoNome, 
+        status: 'novo' 
+      });
       sucesso++;
-    } catch(e) { console.error(e); }
+    } catch(e) { 
+      console.error('Erro ao gerar link para', c.nome, e); 
+    }
   }
   
   const div = document.getElementById('links-gerados');
   if (div) {
-    document.getElementById('links-list').innerHTML = linksGerados.map(l => `<div class="item-card" style="flex-direction:column;"><div style="display:flex;justify-content:space-between;"><div><strong>${escapeHtml(l.nome)}</strong> ${l.status==='reutilizado'?'<span style="background:var(--info-bg);padding:2px 8px;border-radius:12px;">Já atribuído</span>':'<span style="background:var(--success-bg);padding:2px 8px;border-radius:12px;">Novo</span>'}</div><div><button class="btn-copiar-link-individual" data-link="${l.link}">📋</button>${l.email?`<button class="btn-enviar-email-individual" data-email="${l.email}" data-nome="${l.nome}" data-link="${l.link}" data-prazo="${l.prazo}" data-curso="${l.cursoNome}">📧</button>`:''}</div></div><div style="margin-top:8px;padding:8px;background:var(--bg);border-radius:6px;font-size:11px;word-break:break-all;">${l.link}</div><div style="margin-top:6px;font-size:10px;">📅 ${l.prazo}</div></div>`).join('');
+    document.getElementById('links-list').innerHTML = linksGerados.map(l => `
+      <div class="item-card" style="flex-direction:column;">
+        <div style="display:flex;justify-content:space-between;">
+          <div>
+            <strong>${escapeHtml(l.nome)}</strong> 
+            ${l.status==='reutilizado'?'<span style="background:var(--info-bg);padding:2px 8px;border-radius:12px;">Já atribuído</span>':'<span style="background:var(--success-bg);padding:2px 8px;border-radius:12px;">Novo</span>'}
+          </div>
+          <div>
+            <button class="btn-copiar-link-individual" data-link="${l.link}">📋</button>
+            ${l.email ? `<button class="btn-enviar-email-individual" data-email="${l.email}" data-nome="${l.nome}" data-link="${l.link}" data-prazo="${l.prazo}" data-curso="${l.cursoNome}">📧</button>` : ''}
+          </div>
+        </div>
+        <div style="margin-top:8px;padding:8px;background:var(--bg);border-radius:6px;font-size:11px;word-break:break-all;">${l.link}</div>
+        <div style="margin-top:6px;font-size:10px;">📅 ${l.prazo}</div>
+      </div>
+    `).join('');
+    
     document.querySelectorAll('.btn-copiar-link-individual').forEach(b => b.addEventListener('click', () => copiarLinkIndividual(b.dataset.link)));
     document.querySelectorAll('.btn-enviar-email-individual').forEach(b => b.addEventListener('click', () => enviarEmailIndividual(b.dataset.email, b.dataset.nome, b.dataset.link, b.dataset.prazo, b.dataset.curso)));
     div.style.display = 'block';
   }
+  
   showToast(`✅ ${sucesso} novo(s), ${reutilizados} existente(s)`);
   renderAcompanhamento();
 }
@@ -832,7 +907,6 @@ function renderAcompanhamento() {
     `;
   }).join('');
   
-  // Event listeners
   document.querySelectorAll('.btn-ver-certificado').forEach(b => b.addEventListener('click', () => visualizarCertificadoAtribuicao(b.dataset.id)));
   document.querySelectorAll('.btn-relembrar').forEach(b => b.addEventListener('click', () => relembrarColaborador(b.dataset.id)));
   document.querySelectorAll('.btn-remover-atribuicao').forEach(b => b.addEventListener('click', () => removerAtribuicao(b.dataset.id)));
@@ -843,6 +917,39 @@ function visualizarCertificadoAtribuicao(id) {
   const h = historicos.find(x => (x.nome === a.colaboradorUser || x.nomeDisplay === a.colaboradorNome) && x.cursoId === a.cursoId);
   if (!h) { showToast('❌ Certificado não encontrado'); return; }
   mostrarCertificado(h);
+}
+
+// ==================== REMOVER ATRIBUIÇÃO ====================
+async function removerAtribuicao(id) {
+  const atribuicao = atribuicoes.find(a => a.id === id);
+  if (!atribuicao) {
+    showToast('❌ Atribuição não encontrada');
+    return;
+  }
+  
+  if (!confirm(`Remover atribuição da formação "${atribuicao.cursoNome}" para ${atribuicao.colaboradorNome}?`)) {
+    return;
+  }
+  
+  atribuicoes = atribuicoes.filter(a => a.id !== id);
+  await salvarAtribuicoes();
+  
+  if (window.firebaseReady && window.db) {
+    try {
+      await window.db.collection('atribuicoes').doc(id).delete();
+      if (atribuicao.token) {
+        await window.db.collection('tokens').doc(atribuicao.token).delete();
+      }
+    } catch(e) {
+      console.error('Erro ao remover do Firestore:', e);
+    }
+  }
+  
+  renderAcompanhamento();
+  atualizarDashboard();
+  atualizarSelectores();
+  
+  showToast(`✅ Atribuição removida com sucesso!`);
 }
 
 // ==================== HISTÓRICO ====================
@@ -858,44 +965,6 @@ function renderHistorico() {
   tbody.innerHTML = filtered.length ? filtered.map(h => `<tr><td>${escapeHtml(h.nomeDisplay||h.nome)}</td><td>${escapeHtml(h.email||'-')}</td><td>${escapeHtml(h.curso)}</td><td>${escapeHtml(h.data)}</td><td><span class="badge badge-success">${escapeHtml(h.nota)}</span></td><td><button class="btn-ver-certificado-historico" data-id="${h.id}">📄</button></td></tr>`).join('') : '<tr><td colspan="6" class="empty">Nenhum resultado.</td></tr>';
   document.querySelectorAll('.btn-ver-certificado-historico').forEach(b => b.addEventListener('click', () => { const h = historicos.find(x => x.id === b.dataset.id); if (h) mostrarCertificado(h); }));
 }
-// ==================== REMOVER ATRIBUIÇÃO ====================
-async function removerAtribuicao(id) {
-  const atribuicao = atribuicoes.find(a => a.id === id);
-  if (!atribuicao) {
-    showToast('❌ Atribuição não encontrada');
-    return;
-  }
-  
-  if (!confirm(`Remover atribuição da formação "${atribuicao.cursoNome}" para ${atribuicao.colaboradorNome}?`)) {
-    return;
-  }
-  
-  // Remover do array local
-  atribuicoes = atribuicoes.filter(a => a.id !== id);
-  await salvarAtribuicoes();
-  
-  // Remover do Firestore
-  if (window.firebaseReady && window.db) {
-    try {
-      await window.db.collection('atribuicoes').doc(id).delete();
-      
-      // Também remover o token associado (se existir)
-      if (atribuicao.token) {
-        await window.db.collection('tokens').doc(atribuicao.token).delete();
-      }
-    } catch(e) {
-      console.error('Erro ao remover do Firestore:', e);
-    }
-  }
-  
-  // Atualizar interfaces
-  renderAcompanhamento();
-  atualizarDashboard();
-  atualizarSelectores();
-  
-  showToast(`✅ Atribuição removida com sucesso!`);
-}
-
 
 function mostrarCertificado(h) {
   const f = formacoes.find(x => x.id === h.cursoId);
