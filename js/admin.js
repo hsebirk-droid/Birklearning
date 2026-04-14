@@ -461,11 +461,10 @@ function renderPerguntas() {
   
   let html = '';
   perguntas.forEach((p, i) => {
-    // Garantir que opcoes é um array
     const opcoes = Array.isArray(p.opcoes) ? p.opcoes : ['', '', '', ''];
     
     html += `
-      <div class="pergunta-card">
+      <div class="pergunta-card" data-pergunta-index="${i}">
         <div style="margin-bottom:8px;"><strong>${i+1}. ${escapeHtml(p.texto || 'Sem texto')}</strong></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:12px;">
           <div>A) ${escapeHtml(opcoes[0] || '')}</div>
@@ -475,8 +474,8 @@ function renderPerguntas() {
         </div>
         <div style="margin-top:8px;font-size:11px;color:var(--success);">✅ Correta: ${escapeHtml(p.correta || 'A')}</div>
         <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end;">
-          <button class="btn-editar-pergunta" data-pergunta-id="${p.id}" style="background:var(--info);color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">✏️</button>
-          <button class="btn-remover-pergunta" data-pergunta-id="${p.id}" style="background:var(--danger);color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">🗑️</button>
+          <button class="btn-editar-pergunta" data-id="${p.id}" style="background:var(--info);color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">✏️</button>
+          <button class="btn-remover-pergunta" data-id="${p.id}" style="background:var(--danger);color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">🗑️</button>
         </div>
       </div>
     `;
@@ -484,29 +483,33 @@ function renderPerguntas() {
   
   c.innerHTML = html;
   
-  // Adicionar event listeners
-  document.querySelectorAll('.btn-editar-pergunta').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const id = this.getAttribute('data-pergunta-id');
-      console.log('🔍 Botão editar clicado, ID:', id);
-      if (id) {
+  // 🔥 Usar método tradicional para garantir que o ID é capturado
+  const botoesEditar = c.querySelectorAll('.btn-editar-pergunta');
+  const botoesRemover = c.querySelectorAll('.btn-remover-pergunta');
+  
+  botoesEditar.forEach((btn, index) => {
+    btn.onclick = function() {
+      const id = this.getAttribute('data-id');
+      console.log('🔍 ID da pergunta:', id);
+      if (id && id !== 'undefined') {
         editarPergunta(id);
       } else {
-        showToast('❌ ID da pergunta não encontrado');
+        console.error('❌ ID inválido:', id);
+        showToast('❌ Erro: ID da pergunta inválido');
       }
-    });
+    };
   });
   
-  document.querySelectorAll('.btn-remover-pergunta').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const id = this.getAttribute('data-pergunta-id');
-      console.log('🗑️ Botão remover clicado, ID:', id);
-      if (id) {
+  botoesRemover.forEach((btn, index) => {
+    btn.onclick = function() {
+      const id = this.getAttribute('data-id');
+      console.log('🗑️ ID para remover:', id);
+      if (id && id !== 'undefined') {
         removerPergunta(id);
       } else {
-        showToast('❌ ID da pergunta não encontrado');
+        showToast('❌ Erro: ID da pergunta inválido');
       }
-    });
+    };
   });
 }
 
