@@ -478,4 +478,122 @@ th {
     font-weight: 600;
     width: 40%;
   }
+   /* ============================================
+   BOTÃO REMOVER ATRIBUIÇÃO (CORRIGIDO)
+   ============================================ */
+
+.btn-remover-atribuicao {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--danger);
+  transition: all 0.2s;
+  margin-left: 4px;
+}
+
+.btn-remover-atribuicao:hover {
+  background: var(--danger-bg);
+  transform: scale(1.1);
+}
+
+.acompanhar-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: white;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+.acompanhar-item.pendente {
+  border-left: 3px solid var(--warning);
+}
+
+.acompanhar-item.concluido {
+  border-left: 3px solid var(--success);
+}
+
+.acompanhar-item button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  font-size: 14px;
+  color: var(--info);
+}
+
+.acompanhar-item button:hover {
+  background: rgba(0,0,0,0.08);
+  transform: scale(1.1);
+}
+
+.acompanhar-item .btn-remover-atribuicao {
+  color: var(--danger);
+}
+
+.acompanhar-item .btn-remover-atribuicao:hover {
+  background: var(--danger-bg) !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .admin-container {
+    padding: 20px 16px;
+  }
+  
+  .sec-body {
+    padding: 16px;
+  }
+  
+  .admin-tabs {
+    padding: 8px;
+  }
+  
+  .admin-tab {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .colab-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  table, thead, tbody, th, td, tr {
+    display: block;
+  }
+  
+  th {
+    display: none;
+  }
+  
+  td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  
+  td:before {
+    content: attr(data-label);
+    font-weight: 600;
+    width: 40%;
+  }
+  
+  /* Ajustes mobile para os botões */
+  .acompanhar-item {
+    flex-wrap: wrap;
+    justify-content: center;
+    text-align: center;
+  }
 }
