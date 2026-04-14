@@ -1,5 +1,5 @@
 // ============================================
-// ADMIN - LÓGICA PRINCIPAL (VERSÃO FINAL CORRIGIDA)
+// ADMIN - LÓGICA PRINCIPAL (VERSÃO FINAL COMPLETA)
 // ============================================
 
 let formacoes = [];
@@ -43,11 +43,15 @@ function showToast(msg) {
   }
 }
 
-function formatDate(date) { return window.formatDate(date); }
+function formatDate(date) { return window.formatDate ? window.formatDate(date) : new Date(date).toLocaleDateString('pt-PT'); }
 
-function downloadExcel(data, name, sheet) { window.downloadExcel(data, name, sheet); }
+function downloadExcel(data, name, sheet) { 
+  if (window.downloadExcel) window.downloadExcel(data, name, sheet); 
+}
 
-function gerarCertificadoId() { return window.gerarCertificadoId(); }
+function gerarCertificadoId() { 
+  return window.gerarCertificadoId ? window.gerarCertificadoId() : 'CERT-' + Date.now(); 
+}
 
 // ==================== DADOS ====================
 async function carregarDadosExemplo() {
@@ -112,18 +116,21 @@ async function salvarFormacoes() {
     for (const f of formacoes) await window.db.collection('formacoes').doc(f.id).set(f, { merge: true });
   }
 }
+
 async function salvarColaboradores() {
   localStorage.setItem('colaboradores', JSON.stringify(colaboradores));
   if (window.firebaseReady && window.db) {
     for (const c of colaboradores) await window.db.collection('colaboradores').doc(c.id).set(c, { merge: true });
   }
 }
+
 async function salvarAtribuicoes() {
   localStorage.setItem('atribuicoes', JSON.stringify(atribuicoes));
   if (window.firebaseReady && window.db) {
     for (const a of atribuicoes) await window.db.collection('atribuicoes').doc(a.id).set(a, { merge: true });
   }
 }
+
 async function salvarHistoricos() {
   localStorage.setItem('historicos', JSON.stringify(historicos));
   if (window.firebaseReady && window.db) {
@@ -208,7 +215,6 @@ async function gerarCodigoAtribuicao() {
   try {
     await window.db.collection('tokens').doc(tokenId).set(tokenData);
     
-    // Construir URL completo corretamente
     const baseUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
     const link = `${baseUrl}formacao.html?t=${tokenId}`;
     
@@ -745,7 +751,6 @@ async function gerarLinksMassa() {
   const prazo = document.getElementById('atribuir-prazo')?.value || '31/12/2026';
   const cursoNome = document.getElementById('atribuir-curso')?.selectedOptions[0]?.text || 'Formação';
   
-  // Usar o mesmo método de URL da atribuição individual
   const baseUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
   
   linksGerados = []; 
@@ -785,7 +790,6 @@ async function gerarLinksMassa() {
         createdAt: new Date().toISOString() 
       });
       
-      // URL consistente com a atribuição individual
       const link = `${baseUrl}formacao.html?t=${tokenId}`;
       
       const nova = { 
@@ -975,61 +979,101 @@ function mostrarCertificado(h) {
 }
 
 function imprimirCertificadoModal() {
+  if (typeof html2canvas === 'undefined') { showToast('❌ Biblioteca não carregada'); return; }
   html2canvas(document.getElementById('certificado-visualizacao-pdf'), {scale:3}).then(c => {
     const w = window.open(''); w.document.write(`<img src="${c.toDataURL()}">`); w.document.close(); w.print();
-  });
+  }).catch(e => { showToast('❌ Erro ao gerar imagem'); });
 }
 
 function baixarPDFCertificadoModal() {
+  if (typeof html2canvas === 'undefined' || typeof jspdf === 'undefined') { showToast('❌ Bibliotecas não carregadas'); return; }
   html2canvas(document.getElementById('certificado-visualizacao-pdf'), {scale:3}).then(c => {
     const pdf = new jspdf.jsPDF('p','mm','a4'); pdf.addImage(c.toDataURL('image/png'), 'PNG', 0, 0, 210, 297);
     pdf.save(`certificado_${window.certificadoAtual?.nome||'colaborador'}.pdf`);
-  });
+  }).catch(e => { showToast('❌ Erro ao gerar PDF'); });
 }
 
 function exportarHistoricoExcel() {
-  if (!historicos.length) return;
+  if (!historicos.length) { showToast('❌ Sem dados'); return; }
   downloadExcel(historicos.map(h => ({ Colaborador: h.nomeDisplay||h.nome, Email: h.email, Formação: h.curso, Duração: formacoes.find(f=>f.id===h.cursoId)?.duracao||'—', Data: h.data, Nota: h.nota })), 'historico');
 }
 
 function exportarAcompanhamentoExcel() {
-  if (!atribuicoes.length) return;
+  if (!atribuicoes.length) { showToast('❌ Sem dados'); return; }
   const unique = []; const ids = new Set(); atribuicoes.forEach(a => { if (!ids.has(a.id)) { ids.add(a.id); unique.push(a); } });
   downloadExcel(unique.map(a => ({ Formação: a.cursoNome, Duração: formacoes.find(f=>f.id===a.cursoId)?.duracao||'—', Colaborador: a.colaboradorNome, Matrícula: a.colaboradorMatricula, Email: a.colaboradorEmail, Prazo: a.prazo, Status: ['concluido','concluída','Concluido','Concluído'].includes(a.status)?'Concluído':'Pendente' })), 'acompanhamento');
 }
 
-function limparHistorico() { if (confirm('Apagar TUDO?')) { historicos = []; salvarHistoricos(); renderHistorico(); atualizarDashboard(); renderAcompanhamento(); } }
+function limparHistorico() { 
+  if (confirm('Apagar TODO o histórico? Esta ação não pode ser desfeita!')) { 
+    historicos = []; 
+    salvarHistoricos(); 
+    renderHistorico(); 
+    atualizarDashboard(); 
+    renderAcompanhamento(); 
+    showToast('✅ Histórico limpo!');
+  } 
+}
 
 // ==================== CERTIFICADO ====================
-function inserirPlaceholder(ph) { document.getElementById('cert-texto').value += ph; }
+function inserirPlaceholder(ph) { 
+  const el = document.getElementById('cert-texto');
+  if (el) el.value += ph; 
+}
+
 function previewCertificado() {
   let texto = document.getElementById('cert-texto')?.value || '';
   ['nome','formacao','data','nota','certificado_id'].forEach(k => texto = texto.replace(new RegExp(`{{${k}}}`,'g'), {nome:'João Silva',formacao:'Formação Teste',data:new Date().toLocaleDateString('pt-PT'),nota:'85%',certificado_id:'CERT-001'}[k]));
   document.getElementById('cert-preview-content').innerHTML = `<div style="text-align:center;padding:20px;border:2px solid var(--birkenstock-gold);border-radius:16px;background-image:url('${document.getElementById('cert-fundo-imagem')?.value||''}');background-size:cover;"><h2>${escapeHtml(document.getElementById('cert-titulo')?.value||'')}</h2><div>${texto.replace(/\n/g,'<br>')}</div><div style="margin-top:20px;">${escapeHtml(document.getElementById('cert-rodape')?.value||'')}</div></div>`;
   document.getElementById('cert-preview').style.display = 'block';
 }
+
 function salvarTemplateCertificado() {
-  certTemplate = { fundoImagem: document.getElementById('cert-fundo-imagem')?.value, titulo: document.getElementById('cert-titulo')?.value, texto: document.getElementById('cert-texto')?.value, rodape: document.getElementById('cert-rodape')?.value };
-  localStorage.setItem('cert_template', JSON.stringify(certTemplate)); showToast('✅ Salvo!');
+  certTemplate = { 
+    fundoImagem: document.getElementById('cert-fundo-imagem')?.value || defaultCert.fundoImagem, 
+    titulo: document.getElementById('cert-titulo')?.value || defaultCert.titulo, 
+    texto: document.getElementById('cert-texto')?.value || defaultCert.texto, 
+    rodape: document.getElementById('cert-rodape')?.value || defaultCert.rodape 
+  };
+  localStorage.setItem('cert_template', JSON.stringify(certTemplate)); 
+  showToast('✅ Template salvo!');
 }
+
 function resetTemplateCertificado() {
   certTemplate = {...defaultCert};
   document.getElementById('cert-fundo-imagem').value = defaultCert.fundoImagem;
   document.getElementById('cert-titulo').value = defaultCert.titulo;
   document.getElementById('cert-texto').value = defaultCert.texto;
   document.getElementById('cert-rodape').value = defaultCert.rodape;
-  showToast('✅ Restaurado!');
+  showToast('✅ Template restaurado!');
 }
+
 function carregarTemplateCertificado() {
-  const saved = localStorage.getItem('cert_template'); if (!saved) return;
-  try { certTemplate = JSON.parse(saved); ['fundoImagem','titulo','texto','rodape'].forEach(k => { const el = document.getElementById(`cert-${k.replace('Imagem','-imagem')}`); if (el) el.value = certTemplate[k] || ''; }); } catch(e) {}
+  const saved = localStorage.getItem('cert_template'); 
+  if (!saved) return;
+  try { 
+    certTemplate = JSON.parse(saved); 
+    ['fundoImagem','titulo','texto','rodape'].forEach(k => { 
+      const el = document.getElementById(`cert-${k === 'fundoImagem' ? 'fundo-imagem' : k}`); 
+      if (el) el.value = certTemplate[k] || ''; 
+    }); 
+  } catch(e) { console.error('Erro ao carregar template:', e); }
 }
 
 // ==================== SEGURANÇA ====================
 function checkPasswordStrength(p) {
-  let s = 0; if (p.length>=8) s++; if (/[A-Z]/.test(p)) s++; if (/[0-9]/.test(p)) s++; if (/[^a-zA-Z0-9]/.test(p)) s++;
-  const d = document.getElementById('password-strength-admin'); if (d) { d.className = 'password-strength'; d.classList.add(s<=1?'strength-weak':s<=2?'strength-medium':'strength-strong'); }
+  let s = 0; 
+  if (p.length >= 8) s++; 
+  if (/[A-Z]/.test(p)) s++; 
+  if (/[0-9]/.test(p)) s++; 
+  if (/[^a-zA-Z0-9]/.test(p)) s++;
+  const d = document.getElementById('password-strength-admin'); 
+  if (d) { 
+    d.className = 'password-strength'; 
+    d.classList.add(s <= 1 ? 'strength-weak' : s <= 2 ? 'strength-medium' : 'strength-strong'); 
+  }
 }
+
 function alterarPasswordAdmin() {
   const atual = document.getElementById('admin-pass-atual')?.value;
   const nova = document.getElementById('admin-pass-nova')?.value;
@@ -1037,8 +1081,12 @@ function alterarPasswordAdmin() {
   if (atual !== (localStorage.getItem('admin_password')||window.ADMIN_PASS||'SSA2024admin')) { showToast('❌ Password atual incorreta'); return; }
   if (nova !== conf) { showToast('❌ Passwords não coincidem'); return; }
   if (nova.length < 6) { showToast('❌ Mínimo 6 caracteres'); return; }
-  localStorage.setItem('admin_password', nova); window.ADMIN_PASS = nova;
-  showToast('✅ Password alterada!'); document.getElementById('admin-pass-atual').value = document.getElementById('admin-pass-nova').value = document.getElementById('admin-pass-confirm').value = '';
+  localStorage.setItem('admin_password', nova); 
+  window.ADMIN_PASS = nova;
+  showToast('✅ Password alterada!'); 
+  document.getElementById('admin-pass-atual').value = ''; 
+  document.getElementById('admin-pass-nova').value = ''; 
+  document.getElementById('admin-pass-confirm').value = '';
   setTimeout(() => location.reload(), 2000);
 }
 
@@ -1048,6 +1096,7 @@ function switchTab(tabId) {
   document.getElementById(`sec-${tabId}`)?.classList.add('active');
   document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
   document.querySelector(`.admin-tab[data-tab="${tabId}"]`)?.classList.add('active');
+  
   if (tabId === 'colaboradores') renderColabs();
   if (tabId === 'historico') renderHistorico();
   if (tabId === 'atribuir') prepararAtribuicao();
@@ -1077,9 +1126,24 @@ function setupEventListeners() {
 
 function setupRealtimeListeners() {
   if (!window.firebaseReady) return;
-  window.db.collection('historicos').onSnapshot(s => { historicos = s.docs.map(d => ({id:d.id,...d.data()})); if (document.getElementById('sec-historico')?.classList.contains('active')) renderHistorico(); if (document.getElementById('sec-acompanhar')?.classList.contains('active')) renderAcompanhamento(); if (document.getElementById('sec-overview')?.classList.contains('active')) { atualizarDashboard(); renderPrazosProximos(); } });
-  window.db.collection('atribuicoes').onSnapshot(s => { atribuicoes = s.docs.map(d => ({id:d.id,...d.data()})); if (document.getElementById('sec-acompanhar')?.classList.contains('active')) renderAcompanhamento(); if (document.getElementById('sec-overview')?.classList.contains('active')) { atualizarDashboard(); renderPrazosProximos(); } if (document.getElementById('sec-atribuir-massa')?.classList.contains('active')) atualizarSelectores(); });
-  window.db.collection('formacoes').onSnapshot(s => { formacoes = s.docs.map(d => ({id:d.id,...d.data()})); if (document.getElementById('sec-formacoes')?.classList.contains('active')) renderFormacoesLista(); if (document.getElementById('sec-overview')?.classList.contains('active')) atualizarDashboard(); atualizarSelectores(); });
+  window.db.collection('historicos').onSnapshot(s => { 
+    historicos = s.docs.map(d => ({id:d.id,...d.data()})); 
+    if (document.getElementById('sec-historico')?.classList.contains('active')) renderHistorico(); 
+    if (document.getElementById('sec-acompanhar')?.classList.contains('active')) renderAcompanhamento(); 
+    if (document.getElementById('sec-overview')?.classList.contains('active')) { atualizarDashboard(); renderPrazosProximos(); } 
+  });
+  window.db.collection('atribuicoes').onSnapshot(s => { 
+    atribuicoes = s.docs.map(d => ({id:d.id,...d.data()})); 
+    if (document.getElementById('sec-acompanhar')?.classList.contains('active')) renderAcompanhamento(); 
+    if (document.getElementById('sec-overview')?.classList.contains('active')) { atualizarDashboard(); renderPrazosProximos(); } 
+    if (document.getElementById('sec-atribuir-massa')?.classList.contains('active')) atualizarSelectores(); 
+  });
+  window.db.collection('formacoes').onSnapshot(s => { 
+    formacoes = s.docs.map(d => ({id:d.id,...d.data()})); 
+    if (document.getElementById('sec-formacoes')?.classList.contains('active')) renderFormacoesLista(); 
+    if (document.getElementById('sec-overview')?.classList.contains('active')) atualizarDashboard(); 
+    atualizarSelectores(); 
+  });
 }
 
 function initAdmin() {
@@ -1096,7 +1160,7 @@ function initAdmin() {
   });
 }
 
-// ⭐⭐⭐ EXPORTAÇÕES GLOBAIS - NO FINAL DE TUDO ⭐⭐⭐
+// ⭐⭐⭐ EXPORTAÇÕES GLOBAIS ⭐⭐⭐
 window.gerarCodigoAtribuicao = gerarCodigoAtribuicao;
 window.EnvioEmail = EnvioEmail;
 window.enviarEmailIndividual = enviarEmailIndividual;
@@ -1141,4 +1205,4 @@ window.switchTab = switchTab;
 window.initAdmin = initAdmin;
 
 document.addEventListener('DOMContentLoaded', initAdmin);
-console.log('✅ admin.js - VERSÃO FINAL CORRIGIDA');
+console.log('✅ admin.js - VERSÃO FINAL COMPLETA CARREGADA!');
