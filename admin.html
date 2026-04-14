@@ -17,9 +17,6 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
   
-  <!-- PDF.js para deteção automática de páginas -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-  
   <!-- Bibliotecas externas -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -58,324 +55,96 @@
       </div>
       <div class="sec-body">
         <div class="dashboard-grid" id="dashboard-grid"></div>
-        
-        <div class="sec-head" style="margin-top: 32px;">
-          <h2>📋 Atividades Recentes</h2>
-        </div>
+        <div class="sec-head" style="margin-top: 32px;"><h2>📋 Atividades Recentes</h2></div>
         <div id="recent-activities" class="item-list"></div>
-        
-        <!-- 🔥 PRAZOS A TERMINAR - DENTRO DO SEC-OVERVIEW -->
-        <div class="sec-head" style="margin-top: 32px; background: var(--warning);">
-          <h2>⏰ Prazos a Terminar</h2>
-        </div>
-        <div class="sec-body" style="padding: 0;">
-          <div id="prazos-proximos" class="item-list"></div>
-        </div>
+        <div class="sec-head" style="margin-top: 32px; background: var(--warning);"><h2>⏰ Prazos a Terminar</h2></div>
+        <div class="sec-body" style="padding: 0;"><div id="prazos-proximos" class="item-list"></div></div>
       </div>
     </div>
 
     <!-- ========== FORMAÇÕES ========== -->
     <div id="sec-formacoes" class="sec">
-      <div class="sec-head">
-        <h2>📚 Criar / Editar Formação</h2>
-      </div>
+      <div class="sec-head"><h2>📚 Criar / Editar Formação</h2></div>
       <div class="sec-body">
-        <div class="fg">
-          <label>Título da Formação</label>
-          <input type="text" id="f-titulo" placeholder="Ex: Atendimento ao Cliente">
-        </div>
-        <div class="fg">
-          <label>Duração Estimada</label>
-          <input type="text" id="f-duracao" placeholder="Ex: 45 minutos">
-        </div>
-        <div class="fg">
-          <label>Conteúdo Programático</label>
-          <textarea id="f-descricao" rows="6" placeholder="Descreva o conteúdo programático da formação...
-          
-Dica: Coloque cada tópico numa linha separada para melhor visualização.
-
-Exemplo:
-- Regras Gerais e Deveres
-- Política de Segurança
-- EPI: uso e manutenção
-- Procedimentos em acidente"></textarea>
-          <small style="color: var(--info); margin-top: 6px; display: block;">
-            <i class="fas fa-info-circle"></i> Coloque cada tópico numa linha separada (Enter) para melhor formatação.
-          </small>
-        </div>
+        <div class="fg"><label>Título da Formação</label><input type="text" id="f-titulo" placeholder="Ex: Atendimento ao Cliente"></div>
+        <div class="fg"><label>Duração Estimada</label><input type="text" id="f-duracao" placeholder="Ex: 45 minutos"></div>
+        <div class="fg"><label>Conteúdo Programático</label><textarea id="f-descricao" rows="6" placeholder="Descreva o conteúdo programático da formação...&#10;&#10;Dica: Coloque cada tópico numa linha separada.&#10;&#10;Exemplo:&#10;- Regras Gerais e Deveres&#10;- Política de Segurança&#10;- EPI: uso e manutenção"></textarea></div>
         
-        <div class="sec-head" style="margin-top: 24px; background: var(--info);">
-          <h2>📦 Módulos da Formação</h2>
-          <div style="display: flex; gap: 8px;">
-            <button class="btn-sm" onclick="window.abrirModalModulo('video')">🎬 + Vídeo</button>
-            <button class="btn-sm" onclick="window.abrirModalModulo('texto')">📄 + Texto</button>
-            <button class="btn-sm" onclick="window.abrirModalModulo('link')">🔗 + Link</button>
-          </div>
-        </div>
+        <div class="sec-head" style="margin-top: 24px; background: var(--info);"><h2>📦 Módulos da Formação</h2><div style="display: flex; gap: 8px;"><button class="btn-sm" onclick="window.abrirModalModulo('video')">🎬 + Vídeo</button><button class="btn-sm" onclick="window.abrirModalModulo('texto')">📄 + Texto</button><button class="btn-sm" onclick="window.abrirModalModulo('link')">🔗 + Link</button></div></div>
         <div id="modulos-container" class="item-list"></div>
         
-        <div class="sec-head" style="margin-top: 24px; background: var(--purple);">
-          <h2>❓ Perguntas do Quiz</h2>
-          <button class="btn-sm" onclick="window.abrirModalPergunta()">➕ Adicionar Pergunta</button>
-        </div>
+        <div class="sec-head" style="margin-top: 24px; background: var(--purple);"><h2>❓ Perguntas do Quiz</h2><button class="btn-sm" onclick="window.abrirModalPergunta()">➕ Adicionar Pergunta</button></div>
         <div id="perguntas-container" class="item-list"></div>
         
-        <div style="margin-top: 24px; display: flex; gap: 12px;">
-          <button class="btn" id="btn-publicar">📌 Publicar Formação</button>
-          <button class="btn btn-danger" id="btn-cancelar-edicao" style="display: none;">Cancelar Edição</button>
-        </div>
+        <div style="margin-top: 24px; display: flex; gap: 12px;"><button class="btn" id="btn-publicar">📌 Publicar Formação</button><button class="btn btn-danger" id="btn-cancelar-edicao" style="display: none;">Cancelar Edição</button></div>
         <div id="editando-id" style="margin-top: 12px; font-size: 12px; color: var(--info);"></div>
       </div>
-      
-      <div class="sec-head" style="margin-top: 32px;">
-        <h2>📋 Formações Publicadas</h2>
-      </div>
-      <div class="sec-body">
-        <div id="formacoes-list" class="item-list"></div>
-      </div>
+      <div class="sec-head" style="margin-top: 32px;"><h2>📋 Formações Publicadas</h2></div>
+      <div class="sec-body"><div id="formacoes-list" class="item-list"></div></div>
     </div>
 
     <!-- ========== COLABORADORES ========== -->
     <div id="sec-colaboradores" class="sec">
-      <div class="sec-head">
-        <h2>👥 Gestão de Colaboradores</h2>
-      </div>
+      <div class="sec-head"><h2>👥 Gestão de Colaboradores</h2></div>
       <div class="sec-body">
-        <div class="frow">
-          <div class="fg">
-            <label>Matrícula (Nº Colaborador)</label>
-            <input type="text" id="u-matricula" placeholder="Ex: 001">
-          </div>
-          <div class="fg">
-            <label>Nome Completo</label>
-            <input type="text" id="u-nome" placeholder="Ex: João Silva">
-          </div>
-        </div>
-        <div class="frow">
-          <div class="fg">
-            <label>Email</label>
-            <input type="email" id="u-email" placeholder="email@birkenstock.pt">
-          </div>
-          <div class="fg">
-            <label>Password Temporária</label>
-            <input type="password" id="u-pass" placeholder="******">
-            <div id="password-strength" class="password-strength"></div>
-          </div>
-        </div>
+        <div class="frow"><div class="fg"><label>Matrícula (Nº Colaborador)</label><input type="text" id="u-matricula" placeholder="Ex: 001"></div><div class="fg"><label>Nome Completo</label><input type="text" id="u-nome" placeholder="Ex: João Silva"></div></div>
+        <div class="frow"><div class="fg"><label>Email</label><input type="email" id="u-email" placeholder="email@birkenstock.pt"></div><div class="fg"><label>Password Temporária</label><input type="password" id="u-pass" placeholder="******"><div id="password-strength" class="password-strength"></div></div></div>
         <button class="btn" id="btn-save-user">➕ Adicionar Colaborador</button>
-        
         <div style="margin-top: 32px;">
-          <div class="frow">
-            <button class="btn-sm" id="btn-download-modelo">📥 Download Modelo CSV</button>
-            <label class="btn-sm" style="background: var(--info); cursor: pointer;">📂 Importar CSV <input type="file" id="import-csv" accept=".csv" style="display: none;"></label>
-            <button class="btn-sm" onclick="window.exportarColaboradoresExcel()">📊 Exportar Excel</button>
-          </div>
-          <div style="margin-top: 16px;">
-            <table style="width: 100%;">
-              <thead>
-                <tr><th>Matrícula</th><th>Nome</th><th>Email</th><th>Ações</th></tr>
-              </thead>
-              <tbody id="colab-list-table"></tbody>
-            </table>
-          </div>
+          <div class="frow"><button class="btn-sm" id="btn-download-modelo">📥 Download Modelo CSV</button><label class="btn-sm" style="background: var(--info); cursor: pointer;">📂 Importar CSV <input type="file" id="import-csv" accept=".csv" style="display: none;"></label><button class="btn-sm" onclick="window.exportarColaboradoresExcel()">📊 Exportar Excel</button></div>
+          <div style="margin-top: 16px;"><table style="width: 100%;"><thead><tr><th>Matrícula</th><th>Nome</th><th>Email</th><th>Ações</th></tr></thead><tbody id="colab-list-table"></tbody></table></div>
         </div>
       </div>
     </div>
 
     <!-- ========== ATRIBUIÇÃO INDIVIDUAL ========== -->
     <div id="sec-atribuir" class="sec">
-      <div class="sec-head">
-        <h2>🔗 Atribuição Individual</h2>
-      </div>
+      <div class="sec-head"><h2>🔗 Atribuição Individual</h2></div>
       <div class="sec-body">
-        <div class="frow">
-          <div class="fg">
-            <label>👥 Colaborador</label>
-            <select id="select-colaborador">
-              <option value="">Selecione um colaborador...</option>
-            </select>
-          </div>
-          <div class="fg">
-            <label>📚 Formação</label>
-            <select id="select-formacao">
-              <option value="">Selecione uma formação...</option>
-            </select>
-          </div>
-          <div class="fg">
-            <label>📅 Prazo (dd/mm/aaaa)</label>
-            <input type="text" id="atrib-prazo" placeholder="31/12/2026">
-          </div>
-        </div>
-        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px;">
-          <button class="btn" onclick="window.gerarCodigoAtribuicao()">🔗 Gerar Link Individual</button>
-          <button class="btn btn-success" onclick="window.EnvioEmail()">📧 Enviar Email</button>
-        </div>
-        
-        <div id="resultado-atribuicao" style="display: none; margin-top: 24px;">
-          <div class="sec-head" style="background: var(--success);">
-            <h2>✅ Link Gerado</h2>
-          </div>
-          <div style="padding: 16px; background: var(--bg); border-radius: 8px; word-break: break-all;">
-            <p><strong>Link de acesso:</strong></p>
-            <code id="link-gerado" style="display: block; padding: 8px; background: white; border-radius: 6px; margin: 8px 0;"></code>
-            <div style="margin-top: 12px; display: flex; gap: 8px;">
-              <button class="btn-sm" onclick="window.copiarLink()">📋 Copiar Link</button>
-              <button class="btn-sm btn-success" onclick="window.EnvioEmail()">📧 Enviar Email</button>
-            </div>
-          </div>
-        </div>
+        <div class="frow"><div class="fg"><label>👥 Colaborador</label><select id="select-colaborador"><option value="">Selecione um colaborador...</option></select></div><div class="fg"><label>📚 Formação</label><select id="select-formacao"><option value="">Selecione uma formação...</option></select></div><div class="fg"><label>📅 Prazo (dd/mm/aaaa)</label><input type="text" id="atrib-prazo" placeholder="31/12/2026"></div></div>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px;"><button class="btn" onclick="window.gerarCodigoAtribuicao()">🔗 Gerar Link Individual</button><button class="btn btn-success" onclick="window.EnvioEmail()">📧 Enviar Email</button></div>
+        <div id="resultado-atribuicao" style="display: none; margin-top: 24px;"><div class="sec-head" style="background: var(--success);"><h2>✅ Link Gerado</h2></div><div style="padding: 16px; background: var(--bg); border-radius: 8px; word-break: break-all;"><p><strong>Link de acesso:</strong></p><code id="link-gerado" style="display: block; padding: 8px; background: white; border-radius: 6px; margin: 8px 0;"></code><div style="margin-top: 12px; display: flex; gap: 8px;"><button class="btn-sm" onclick="window.copiarLink()">📋 Copiar Link</button><button class="btn-sm btn-success" onclick="window.EnvioEmail()">📧 Enviar Email</button></div></div></div>
       </div>
     </div>
 
     <!-- ========== ATRIBUIÇÃO EM MASSA ========== -->
     <div id="sec-atribuir-massa" class="sec">
-      <div class="sec-head">
-        <h2>🔗 Atribuição em Massa</h2>
-      </div>
+      <div class="sec-head"><h2>🔗 Atribuição em Massa</h2></div>
       <div class="sec-body">
-        <div class="fg">
-          <label>Formação</label>
-          <select id="atribuir-curso"></select>
-        </div>
-        <div class="fg">
-          <label>Prazo (dd/mm/aaaa)</label>
-          <input type="text" id="atribuir-prazo" placeholder="31/12/2026">
-        </div>
-        <div class="colab-selector">
-          <label>Selecionar Colaboradores</label>
-          <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-            <button class="btn-sm" onclick="window.selecionarTodos()">Selecionar Todos</button>
-            <button class="btn-sm" onclick="window.deselecionarTodos()">Desselecionar Todos</button>
-          </div>
-          <div id="colab-selector-grid" class="colab-grid"></div>
-        </div>
+        <div class="fg"><label>Formação</label><select id="atribuir-curso"></select></div>
+        <div class="fg"><label>Prazo (dd/mm/aaaa)</label><input type="text" id="atribuir-prazo" placeholder="31/12/2026"></div>
+        <div class="colab-selector"><label>Selecionar Colaboradores</label><div style="display: flex; gap: 8px; margin-bottom: 12px;"><button class="btn-sm" onclick="window.selecionarTodos()">Selecionar Todos</button><button class="btn-sm" onclick="window.deselecionarTodos()">Desselecionar Todos</button></div><div id="colab-selector-grid" class="colab-grid"></div></div>
         <button class="btn" onclick="window.gerarLinksMassa()">🔗 Gerar Links de Acesso</button>
-        
-        <div id="links-gerados" style="display: none; margin-top: 24px;">
-          <div class="sec-head" style="background: var(--success);">
-            <h2>📎 Links Gerados</h2>
-            <div>
-              <button class="btn-sm" onclick="window.copiarTodosLinks()">📋 Copiar Todos</button>
-              <button class="btn-sm" onclick="window.enviarEmailsMassa()">📧 Enviar Emails</button>
-            </div>
-          </div>
-          <div id="links-list" class="item-list"></div>
-        </div>
+        <div id="links-gerados" style="display: none; margin-top: 24px;"><div class="sec-head" style="background: var(--success);"><h2>📎 Links Gerados</h2><div><button class="btn-sm" onclick="window.copiarTodosLinks()">📋 Copiar Todos</button><button class="btn-sm" onclick="window.enviarEmailsMassa()">📧 Enviar Emails</button></div></div><div id="links-list" class="item-list"></div></div>
       </div>
     </div>
 
     <!-- ========== ACOMPANHAR ========== -->
     <div id="sec-acompanhar" class="sec">
-      <div class="sec-head">
-        <h2>📈 Acompanhamento</h2>
-        <div style="display: flex; gap: 8px;">
-          <select id="filtro-formacao-acompanhar" style="padding: 6px; border-radius: 6px;">
-            <option value="">Todas formações</option>
-          </select>
-          <select id="filtro-status-acompanhar" style="padding: 6px; border-radius: 6px;">
-            <option value="">Todos</option>
-            <option value="concluido">Concluídos</option>
-            <option value="pendente">Pendentes</option>
-          </select>
-          <button class="btn-sm" onclick="window.exportarAcompanhamentoExcel()">📊 Exportar Excel</button>
-        </div>
-      </div>
-      <div class="sec-body">
-        <div id="acompanhar-lista"></div>
-      </div>
+      <div class="sec-head"><h2>📈 Acompanhamento</h2><div style="display: flex; gap: 8px;"><select id="filtro-formacao-acompanhar" style="padding: 6px; border-radius: 6px;"><option value="">Todas formações</option></select><select id="filtro-status-acompanhar" style="padding: 6px; border-radius: 6px;"><option value="">Todos</option><option value="concluido">Concluídos</option><option value="pendente">Pendentes</option></select><button class="btn-sm" onclick="window.exportarAcompanhamentoExcel()">📊 Exportar Excel</button></div></div>
+      <div class="sec-body"><div id="acompanhar-lista"></div></div>
     </div>
 
     <!-- ========== HISTÓRICO ========== -->
     <div id="sec-historico" class="sec">
-      <div class="sec-head">
-        <h2>📜 Histórico de Formações</h2>
-        <div>
-          <select id="filtro-colaborador-historico">
-            <option value="">Todos</option>
-          </select>
-          <button class="btn-sm" onclick="window.exportarHistoricoExcel()">📊 Exportar Excel</button>
-          <button class="btn-sm btn-danger" onclick="window.limparHistorico()">🗑️ Limpar Histórico</button>
-        </div>
-      </div>
-      <div class="sec-body">
-        <table style="width: 100%;">
-          <thead>
-            <tr><th>Colaborador</th><th>Email</th><th>Formação</th><th>Data</th><th>Nota</th><th>Certificado</th></tr>
-          </thead>
-          <tbody id="lista-notas"></tbody>
-        </table>
-      </div>
+      <div class="sec-head"><h2>📜 Histórico de Formações</h2><div><select id="filtro-colaborador-historico"><option value="">Todos</option></select><button class="btn-sm" onclick="window.exportarHistoricoExcel()">📊 Exportar Excel</button><button class="btn-sm btn-danger" onclick="window.limparHistorico()">🗑️ Limpar Histórico</button></div></div>
+      <div class="sec-body"><table style="width: 100%;"><thead><tr><th>Colaborador</th><th>Email</th><th>Formação</th><th>Data</th><th>Nota</th><th>Certificado</th></tr></thead><tbody id="lista-notas"></tbody></table></div>
     </div>
 
     <!-- ========== CERTIFICADO ========== -->
     <div id="sec-certificado" class="sec">
-      <div class="sec-head">
-        <h2>🎓 Personalizar Certificado</h2>
-      </div>
-      <div class="sec-body">
-        <div class="cert-editor">
-          <div class="fg">
-            <label>Imagem de Fundo (URL)</label>
-            <input type="text" id="cert-fundo-imagem" placeholder="assets/fundo_certificado.png">
-          </div>
-          <div class="fg">
-            <label>Título</label>
-            <input type="text" id="cert-titulo" value="Certificado de Formação">
-          </div>
-          <div class="fg">
-            <label>Texto do Certificado</label>
-            <textarea id="cert-texto" rows="6">Certifica-se que {{nome}} concluiu {{formacao}} com {{nota}}.
-Emitido em {{data}}.</textarea>
-            <div style="margin-top: 8px;">
-              <span class="placeholder-badge" onclick="window.inserirPlaceholder('{{nome}}')">{{nome}}</span>
-              <span class="placeholder-badge" onclick="window.inserirPlaceholder('{{formacao}}')">{{formacao}}</span>
-              <span class="placeholder-badge" onclick="window.inserirPlaceholder('{{nota}}')">{{nota}}</span>
-              <span class="placeholder-badge" onclick="window.inserirPlaceholder('{{data}}')">{{data}}</span>
-              <span class="placeholder-badge" onclick="window.inserirPlaceholder('{{certificado_id}}')">{{certificado_id}}</span>
-            </div>
-          </div>
-          <div class="fg">
-            <label>Rodapé</label>
-            <input type="text" id="cert-rodape" value="Direção de Formação">
-          </div>
-          <div style="display: flex; gap: 12px;">
-            <button class="btn" onclick="window.previewCertificado()">👁️ Pré-visualizar</button>
-            <button class="btn btn-success" onclick="window.salvarTemplateCertificado()">💾 Salvar Template</button>
-            <button class="btn btn-warning" onclick="window.resetTemplateCertificado()">🔄 Restaurar Padrão</button>
-          </div>
-        </div>
-        <div id="cert-preview" class="cert-preview" style="display: none;">
-          <h3>Pré-visualização</h3>
-          <div id="cert-preview-content"></div>
-        </div>
-      </div>
+      <div class="sec-head"><h2>🎓 Personalizar Certificado</h2></div>
+      <div class="sec-body"><div class="cert-editor"><div class="fg"><label>Imagem de Fundo (URL)</label><input type="text" id="cert-fundo-imagem" placeholder="assets/fundo_certificado.png"></div><div class="fg"><label>Título</label><input type="text" id="cert-titulo" value="Certificado de Formação"></div><div class="fg"><label>Texto do Certificado</label><textarea id="cert-texto" rows="6">Certifica-se que {{nome}} concluiu {{formacao}} com {{nota}}.&#10;Emitido em {{data}}.</textarea><div style="margin-top: 8px;"><span class="placeholder-badge" onclick="window.inserirPlaceholder('{{nome}}')">{{nome}}</span><span class="placeholder-badge" onclick="window.inserirPlaceholder('{{formacao}}')">{{formacao}}</span><span class="placeholder-badge" onclick="window.inserirPlaceholder('{{nota}}')">{{nota}}</span><span class="placeholder-badge" onclick="window.inserirPlaceholder('{{data}}')">{{data}}</span><span class="placeholder-badge" onclick="window.inserirPlaceholder('{{certificado_id}}')">{{certificado_id}}</span></div></div><div class="fg"><label>Rodapé</label><input type="text" id="cert-rodape" value="Direção de Formação"></div><div style="display: flex; gap: 12px;"><button class="btn" onclick="window.previewCertificado()">👁️ Pré-visualizar</button><button class="btn btn-success" onclick="window.salvarTemplateCertificado()">💾 Salvar Template</button><button class="btn btn-warning" onclick="window.resetTemplateCertificado()">🔄 Restaurar Padrão</button></div></div><div id="cert-preview" class="cert-preview" style="display: none;"><h3>Pré-visualização</h3><div id="cert-preview-content"></div></div></div>
     </div>
 
     <!-- ========== SEGURANÇA ========== -->
     <div id="sec-seguranca" class="sec">
-      <div class="sec-head">
-        <h2>🔒 Segurança</h2>
-      </div>
-      <div class="sec-body">
-        <div class="fg">
-          <label>Password Atual</label>
-          <input type="password" id="admin-pass-atual">
-        </div>
-        <div class="fg">
-          <label>Nova Password</label>
-          <input type="password" id="admin-pass-nova" onkeyup="window.checkPasswordStrength(this.value)">
-          <div id="password-strength-admin" class="password-strength"></div>
-        </div>
-        <div class="fg">
-          <label>Confirmar Nova Password</label>
-          <input type="password" id="admin-pass-confirm">
-        </div>
-        <button class="btn" onclick="window.alterarPasswordAdmin()">Alterar Password</button>
-      </div>
+      <div class="sec-head"><h2>🔒 Segurança</h2></div>
+      <div class="sec-body"><div class="fg"><label>Password Atual</label><input type="password" id="admin-pass-atual"></div><div class="fg"><label>Nova Password</label><input type="password" id="admin-pass-nova" onkeyup="window.checkPasswordStrength(this.value)"><div id="password-strength-admin" class="password-strength"></div></div><div class="fg"><label>Confirmar Nova Password</label><input type="password" id="admin-pass-confirm"></div><button class="btn" onclick="window.alterarPasswordAdmin()">Alterar Password</button></div>
     </div>
   </div>
 
-  <!-- Modal Módulo -->
+  <!-- Modal Módulo (CORRIGIDO - sem PDF e tags corretas) -->
   <div id="modal-modulo" class="modal">
     <div class="modal-content">
       <div class="modal-header">
@@ -406,26 +175,7 @@ Emitido em {{data}}.</textarea>
         <div class="fg">
           <label>URL do Documento (Google Drive - PÚBLICO)</label>
           <input type="text" id="modulo-link-url" placeholder="https://drive.google.com/file/d/...">
-          <small style="color: var(--info);">
-            <i class="fas fa-info-circle"></i> 
-            Certifique-se que o ficheiro está partilhado como "Qualquer pessoa com o link pode ver"
-          </small>
-        </div>
-        
-        <div style="margin-bottom: 16px;">
-          <button type="button" class="btn-sm" id="btn-detectar-paginas" style="background: var(--info);">
-            <i class="fas fa-magic"></i> Detetar número de páginas automaticamente
-          </button>
-          <span id="detectar-status" style="margin-left: 12px; font-size: 12px;"></span>
-        </div>
-        
-        <div class="fg">
-          <label>Número de Páginas do Documento</label>
-          <input type="number" id="modulo-link-pages" placeholder="Será detetado automaticamente" min="1" value="1" required>
-          <small style="color: var(--birkenstock-gray);">
-            <i class="fas fa-file-pdf"></i> 
-            Clique em "Detetar número de páginas" para preencher automaticamente
-          </small>
+          <small style="color: var(--info);"><i class="fas fa-info-circle"></i> Certifique-se que o ficheiro está partilhado como "Qualquer pessoa com o link pode ver"</small>
         </div>
       </div>
       <button class="btn" id="btn-salvar-modulo">Salvar Módulo</button>
@@ -435,28 +185,11 @@ Emitido em {{data}}.</textarea>
   <!-- Modal Pergunta -->
   <div id="modal-pergunta" class="modal">
     <div class="modal-content">
-      <div class="modal-header">
-        <h3>Adicionar Pergunta</h3>
-        <button class="modal-close" onclick="document.getElementById('modal-pergunta').style.display='none'">✕</button>
-      </div>
-      <div class="fg">
-        <label>Texto da Pergunta</label>
-        <input type="text" id="pergunta-texto" placeholder="Qual é a resposta correta?">
-      </div>
-      <div class="frow">
-        <div class="fg"><label>Opção A</label><input type="text" id="pergunta-opcao-a"></div>
-        <div class="fg"><label>Opção B</label><input type="text" id="pergunta-opcao-b"></div>
-      </div>
-      <div class="frow">
-        <div class="fg"><label>Opção C</label><input type="text" id="pergunta-opcao-c"></div>
-        <div class="fg"><label>Opção D</label><input type="text" id="pergunta-opcao-d"></div>
-      </div>
-      <div class="fg">
-        <label>Resposta Correta</label>
-        <select id="pergunta-correta">
-          <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option>
-        </select>
-      </div>
+      <div class="modal-header"><h3>Adicionar Pergunta</h3><button class="modal-close" onclick="document.getElementById('modal-pergunta').style.display='none'">✕</button></div>
+      <div class="fg"><label>Texto da Pergunta</label><input type="text" id="pergunta-texto" placeholder="Qual é a resposta correta?"></div>
+      <div class="frow"><div class="fg"><label>Opção A</label><input type="text" id="pergunta-opcao-a"></div><div class="fg"><label>Opção B</label><input type="text" id="pergunta-opcao-b"></div></div>
+      <div class="frow"><div class="fg"><label>Opção C</label><input type="text" id="pergunta-opcao-c"></div><div class="fg"><label>Opção D</label><input type="text" id="pergunta-opcao-d"></div></div>
+      <div class="fg"><label>Resposta Correta</label><select id="pergunta-correta"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select></div>
       <button class="btn" id="btn-salvar-pergunta">Salvar Pergunta</button>
     </div>
   </div>
@@ -464,21 +197,14 @@ Emitido em {{data}}.</textarea>
   <!-- Modal Certificado -->
   <div id="modal-certificado" class="modal">
     <div class="modal-content" style="max-width: 800px;">
-      <div class="modal-header">
-        <h3>Certificado</h3>
-        <button class="modal-close" onclick="document.getElementById('modal-certificado').style.display='none'">✕</button>
-      </div>
+      <div class="modal-header"><h3>Certificado</h3><button class="modal-close" onclick="document.getElementById('modal-certificado').style.display='none'">✕</button></div>
       <div id="certificado-visualizacao"></div>
-      <div style="display: flex; gap: 12px; justify-content: center; margin-top: 20px;">
-        <button class="btn-sm" onclick="window.imprimirCertificadoModal()">🖨️ Imprimir</button>
-        <button class="btn-sm btn-success" onclick="window.baixarPDFCertificadoModal()">📄 Descarregar PDF</button>
-      </div>
+      <div style="display: flex; gap: 12px; justify-content: center; margin-top: 20px;"><button class="btn-sm" onclick="window.imprimirCertificadoModal()">🖨️ Imprimir</button><button class="btn-sm btn-success" onclick="window.baixarPDFCertificadoModal()">📄 Descarregar PDF</button></div>
     </div>
   </div>
 
   <div id="toast" class="toast"></div>
 
-  <!-- Scripts -->
   <script src="js/firebase-config.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/auth.js"></script>
