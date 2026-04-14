@@ -207,40 +207,77 @@ async function gerarCodigoAtribuicao() {
   
   try {
     await window.db.collection('tokens').doc(tokenId).set(tokenData);
-    const link = `${window.location.origin}/formacao.html?t=${tokenId}`;
-    const nova = { id: Date.now().toString()+'_'+user.replace(/[^a-z0-9]/gi,'_'), colaboradorId: colab.id, colaboradorUser: user, colaboradorNome: colab.nome, colaboradorEmail: colab.email||'', colaboradorMatricula: colab.matricula||'', cursoId, cursoNome: form.nome, prazo, status: 'pendente', dataAtribuicao: new Date().toISOString(), token: tokenId, link };
+    
+    // ✅ CORREÇÃO: Construir URL completo corretamente
+    const baseUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
+    const link = `${baseUrl}formacao.html?t=${tokenId}`;
+    
+    const nova = { 
+      id: Date.now().toString()+'_'+user.replace(/[^a-z0-9]/gi,'_'), 
+      colaboradorId: colab.id, 
+      colaboradorUser: user, 
+      colaboradorNome: colab.nome, 
+      colaboradorEmail: colab.email||'', 
+      colaboradorMatricula: colab.matricula||'', 
+      cursoId, 
+      cursoNome: form.nome, 
+      prazo, 
+      status: 'pendente', 
+      dataAtribuicao: new Date().toISOString(), 
+      token: tokenId, 
+      link: link  // ✅ Guardar URL completo
+    };
+    
     await window.db.collection('atribuicoes').doc(nova.id).set(nova);
     atribuicoes.push(nova);
     document.getElementById('resultado-atribuicao').style.display = 'block';
     document.getElementById('link-gerado').textContent = link;
     window.linkAtualGerado = link;
     showToast("✅ Atribuição registada!");
-  } catch(e) { showToast('❌ Erro: '+e.message); }
+  } catch(e) { 
+    showToast('❌ Erro: '+e.message); 
+  }
 }
 
 function EnvioEmail() {
   const colab = colaboradores.find(c => c.id === document.getElementById('select-colaborador')?.value);
   const link = window.linkAtualGerado || document.getElementById('link-gerado')?.textContent;
   const prazo = document.getElementById('atrib-prazo')?.value || '31/12/2026';
-  if (!colab?.email) { showToast('❌ Sem email'); return; }
+  const formacaoNome = document.getElementById('select-formacao')?.selectedOptions[0]?.text || 'Formação';
   
-  // ✅ CORREÇÃO: Usar \r\n para quebra de linha e evitar encodeURIComponent duplo
-  const assunto = 'Birkenstock - Nova Formacao Atribuida';
-  const corpo = `Olá ${colab.nome},%0D%0A%0D%0AFoi-lhe atribuida uma nova formacao na plataforma Birkenstock S&CC Portugal.%0D%0A%0D%0AFormacao: ${document.getElementById('select-formacao')?.selectedOptions[0]?.text || 'Formacao'}%0D%0APrazo: ${prazo}%0D%0A%0D%0AAceda atraves do link:%0D%0A${link}%0D%0A%0D%0AAtenciosamente,%0D%0AEquipa de Formacao Birkenstock`;
+  if (!colab?.email) { 
+    showToast('❌ Colaborador sem email cadastrado'); 
+    return; 
+  }
   
-  window.location.href = `mailto:${colab.email}?subject=${encodeURIComponent(assunto)}&body=${corpo}`;
-  showToast(`📧 A abrir email para ${colab.nome}`);
-}
+  if (!link) {
+    showToast('❌ Gere o link primeiro');
+    return;
+  }
+  
+  // ✅ CORREÇÃO: Usar mailto simples sem encodeURIComponent excessivo
+  const assunto = `Birkenstock - Nova Formacao: ${formacaoNome}`;
+  
+  // Corpo do email com quebras de linha simples
+  const corpo = `Ola ${colab.nome},
 
-function enviarEmailIndividual(email, nome, link, prazo, cursoNome) {
-  if (!email) return;
+Foi-lhe atribuida uma nova formacao na plataforma Birkenstock S&CC Portugal.
+
+Formacao: ${formacaoNome}
+Prazo: ${prazo}
+
+Aceda atraves do link:
+${link}
+
+Atenciosamente,
+Equipa de Formacao Birkenstock`;
   
-  // ✅ CORREÇÃO: Remover acentos e usar %0D%0A para quebra de linha
-  const cursoNomeSemAcento = cursoNome.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const assunto = `Birkenstock - Formacao: ${cursoNomeSemAcento}`;
-  const corpo = `Olá ${nome},%0D%0A%0D%0AFoi-lhe atribuida a formacao "${cursoNomeSemAcento}" na plataforma Birkenstock S&CC Portugal.%0D%0A%0D%0APrazo: ${prazo}%0D%0A%0D%0AAceda atraves do link:%0D%0A${link}%0D%0A%0D%0AAtenciosamente,%0D%0AEquipa de Formacao Birkenstock`;
+  // Criar mailto URL
+  const mailtoUrl = `mailto:${colab.email}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
   
-  window.location.href = `mailto:${email}?subject=${encodeURIComponent(assunto)}&body=${corpo}`;
+  // Abrir email
+  window.location.href = mailtoUrl;
+  showToast(`📧 A abrir email para ${colab.nome}`);
 }
 
 function enviarEmailsMassa() {
